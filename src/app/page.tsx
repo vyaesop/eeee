@@ -26,6 +26,7 @@ const formSchema = z.object({
 });
 
 const VALID_INVITATION_CODE = "APEX2024";
+const ADMIN_INVITATION_CODE = "ADMIN2024";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -43,7 +44,10 @@ export default function LoginPage() {
   function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     setTimeout(() => {
-      if (values.invitationCode === VALID_INVITATION_CODE) {
+      const isAdmin = values.username === "admin" && values.invitationCode === ADMIN_INVITATION_CODE;
+      const isUser = values.invitationCode === VALID_INVITATION_CODE;
+
+      if (isAdmin || isUser) {
         toast({
           title: "Login Successful",
           description: `Welcome back, ${values.username}!`,
@@ -56,7 +60,7 @@ export default function LoginPage() {
         toast({
           variant: "destructive",
           title: "Login Failed",
-          description: "Invalid invitation code. Please try again.",
+          description: "Invalid username or invitation code. Please try again.",
         });
         setIsLoading(false);
       }
