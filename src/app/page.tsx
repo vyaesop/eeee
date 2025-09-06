@@ -6,6 +6,10 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { TIERS } from "@/lib/constants";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,30 +45,59 @@ export default function LoginPage() {
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    setTimeout(() => {
-      const isAdmin = values.username === "admin" && values.invitationCode === ADMIN_INVITATION_CODE;
-      const isUser = values.invitationCode === VALID_INVITATION_CODE;
+    
+    const isAdmin = values.username === "admin" && values.invitationCode === ADMIN_INVITATION_CODE;
+    const isUser = values.invitationCode === VALID_INVITATION_CODE;
 
-      if (isAdmin || isUser) {
-        toast({
-          title: "Login Successful",
-          description: `Welcome back, ${values.username}!`,
-        });
+    if (isAdmin) {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("apexvest_user", values.username);
+      }
+      toast({ title: "Login Successful", description: "Welcome back, Admin!" });
+      router.push("/dashboard");
+      return;
+    }
+
+    if (isUser) {
+      try {
+        const userRef = doc(db, "users", values.username);
+        const userSnap = await getDoc(userRef);
+
+        if (!userSnap.exists()) {
+          // Create new user if they don't exist
+          const newUser = {
+            username: values.username,
+            totalDeposit: 1000,
+            tier: TIERS.SILVER.name,
+            earnings: 50,
+            joined: new Date().toLocaleDateString(),
+          };
+          await setDoc(userRef, newUser);
+          toast({ title: "Account Created!", description: "Welcome to ApexVest, your journey starts now." });
+        } else {
+            toast({ title: "Login Successful", description: `Welcome back, ${values.username}!` });
+        }
+
         if (typeof window !== "undefined") {
-            sessionStorage.setItem("apexvest_user", values.username);
+          sessionStorage.setItem("apexvest_user", values.username);
         }
         router.push("/dashboard");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "Invalid username or invitation code. Please try again.",
-        });
+
+      } catch (error) {
+        console.error("Firestore operation failed:", error);
+        toast({ variant: "destructive", title: "Login Failed", description: "Could not connect to the database." });
         setIsLoading(false);
       }
-    }, 1000);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: "Invalid username or invitation code. Please try again.",
+      });
+      setIsLoading(false);
+    }
   }
 
   return (
