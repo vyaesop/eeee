@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, LogOut, ShieldCheck, User } from "lucide-react";
+import { LayoutDashboard, LogOut, ShieldCheck, User, Cog } from "lucide-react";
 
 export default function DashboardLayout({
   children,
@@ -51,6 +51,7 @@ export default function DashboardLayout({
   }
 
   const userInitial = user ? user.charAt(0).toUpperCase() : "?";
+  const isAdmin = user === 'admin';
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-background">
@@ -70,6 +71,15 @@ export default function DashboardLayout({
                 <LayoutDashboard className="h-5 w-5 inline-block mr-2" />
                 Dashboard
             </Link>
+             {isAdmin && (
+              <Link
+                href="/dashboard/admin"
+                className="text-foreground transition-colors hover:text-foreground"
+              >
+                <Cog className="h-5 w-5 inline-block mr-2" />
+                Admin
+              </Link>
+            )}
         </nav>
 
         <div className="flex items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
