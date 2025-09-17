@@ -1,8 +1,9 @@
+
 'use client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { tiers } from "@/lib/constants";
+import { tiers as allTiers } from "@/lib/constants";
 import { useRouter } from 'next/navigation';
 import { useUserData } from "@/app/dashboard/layout";
 import { doc, updateDoc } from "firebase/firestore";
@@ -16,7 +17,9 @@ const MembershipPage = () => {
   const userData = useUserData();
   const { toast } = useToast();
 
-  const chartData = tiers.filter(t => t.name !== 'Observer').map(tier => ({
+  const availableTiers = allTiers.filter(t => t.name !== 'Observer');
+
+  const chartData = availableTiers.map(tier => ({
     name: tier.name,
     'APY (%)': tier.apy ? Math.round(tier.apy * 100) : 0,
     fill: tier.color,
@@ -52,14 +55,15 @@ const MembershipPage = () => {
 
         <Card className="mb-12 shadow-lg">
             <CardHeader>
-            <CardTitle>Annual Percentage Yield (APY) Potential</CardTitle>
+              <CardTitle>Annual Percentage Yield (APY) Potential</CardTitle>
+              <CardDescription>Estimated annual returns for each tier.</CardDescription>
             </CardHeader>
             <CardContent>
             <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" angle={-20} textAnchor="end" height={60} interval={0} tick={{ fontSize: 12 }} />
-                <YAxis />
+                <YAxis unit="%" />
                 <Tooltip 
                     formatter={(value) => `${value}%`}
                     contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
@@ -72,7 +76,7 @@ const MembershipPage = () => {
         </Card>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {tiers.filter(t => t.name !== 'Observer').map(tier => (
+            {availableTiers.map(tier => (
             <Card key={tier.name} className="flex flex-col shadow-lg hover:shadow-primary/20 hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-primary">
                 <CardHeader className="text-center">
                 <CardTitle className="text-2xl font-headline" style={{color: tier.color}}>{tier.name}</CardTitle>
