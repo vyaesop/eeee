@@ -1,57 +1,77 @@
-export type Tier = {
-  name: "Observer" | "Silver" | "Gold" | "Platinum";
-  minDeposit: number;
-  maxDeposit: number;
-  monthlyRate: number;
-  apy: number;
-  color: string;
-};
-
-// APY = (1 + monthly_rate)^12 - 1
-export const TIERS: Record<string, Tier> = {
-  OBSERVER: {
+export const tiers = [
+  {
     name: "Observer",
     minDeposit: 0,
-    maxDeposit: 999,
-    monthlyRate: 0,
-    apy: 0,
-    color: "hsl(var(--muted-foreground))",
+    maxDeposit: 799,
+    price: "Br 0",
+    dailyReturn: 0,
   },
-  SILVER: {
-    name: "Silver",
-    minDeposit: 1000,
-    maxDeposit: 9999.99,
-    monthlyRate: 0.04,
-    apy: 0.601, // (1.04^12 - 1)
-    color: "#C0C0C0",
+  {
+    name: "Gold Assets 1",
+    minDeposit: 800,
+    maxDeposit: 1199,
+    price: "Br 800",
+    dailyReturn: 0.04,
   },
-  GOLD: {
-    name: "Gold",
-    minDeposit: 10000,
-    maxDeposit: 49999.99,
-    monthlyRate: 0.065,
-    apy: 1.129, // (1.065^12 - 1)
-    color: "#FFD700",
+  {
+    name: "Oil Assets 1",
+    minDeposit: 1200,
+    maxDeposit: 1499,
+    price: "Br 1200",
+    dailyReturn: 0.04,
   },
-  PLATINUM: {
-    name: "Platinum",
-    minDeposit: 50000,
+  {
+    name: "Real Estate Assets 1",
+    minDeposit: 1500,
+    maxDeposit: 2699,
+    price: "Br 1500",
+    dailyReturn: 0.04,
+  },
+  {
+    name: "Total Assets 1",
+    minDeposit: 2700,
+    maxDeposit: 2999,
+    price: "Br 2700",
+    dailyReturn: 0.04,
+  },
+  {
+    name: "Gold Assets 2",
+    minDeposit: 3000,
+    maxDeposit: 3199,
+    price: "Br 3000",
+    dailyReturn: 0.045,
+  },
+  {
+    name: "Oil Assets 2",
+    minDeposit: 3200,
+    maxDeposit: 3999,
+    price: "Br 3200",
+    dailyReturn: 0.045,
+  },
+  {
+    name: "Real Estate Assets 2",
+    minDeposit: 4000,
+    maxDeposit: 5599,
+    price: "Br 4000",
+    dailyReturn: 0.045,
+  },
+  {
+    name: "Total Assets 2",
+    minDeposit: 5600,
+    maxDeposit: 11999,
+    price: "Br 5600",
+    dailyReturn: 0.05,
+  },
+  {
+    name: "All Invest",
+    minDeposit: 12000,
     maxDeposit: Infinity,
-    monthlyRate: 0.09,
-    apy: 1.815, // (1.09^12 - 1)
-    color: "#E5E4E2",
+    price: "Br 12000",
+    dailyReturn: 0.05,
   },
-};
-
-export const getTier = (deposit: number): Tier => {
-  if (deposit >= TIERS.PLATINUM.minDeposit) return TIERS.PLATINUM;
-  if (deposit >= TIERS.GOLD.minDeposit) return TIERS.GOLD;
-  if (deposit >= TIERS.SILVER.minDeposit) return TIERS.SILVER;
-  return TIERS.OBSERVER;
-};
-
-export const MOCK_REFERRALS = [
-    { name: "alex.p", deposit: 5000 },
-    { name: "sara.k", deposit: 12000 },
-    { name: "mike.r", deposit: 2500 },
 ];
+
+export const getTierFromDeposit = (deposit: number): string => {
+  const tier = tiers.find(t => deposit >= t.minDeposit && deposit <= t.maxDeposit);
+  return tier ? tier.name : "Observer";
+};

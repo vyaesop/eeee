@@ -9,7 +9,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { TIERS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +22,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldCheck, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 
 const formSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters."),
@@ -83,11 +82,12 @@ export default function JoinPage() {
 
         const newUser = {
             username: values.username,
-            totalDeposit: 1000,
-            tier: TIERS.SILVER.name,
-            earnings: 50,
-            joined: new Date().toLocaleDateString(),
+            totalDeposit: 0,
+            earningsBalance: 0,
+            autoCompounding: true,
+            joined: new Date().toISOString(),
             referredBy: referrer || null,
+            membershipTier: 'Observer',
         };
         await setDoc(userRef, newUser);
         

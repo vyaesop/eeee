@@ -2,13 +2,13 @@ import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
-  projectId: 'apexvest-2jp25',
-  appId: '1:430948091820:web:fafe4a0393251c1aab5c09',
-  storageBucket: 'apexvest-2jp25.firebasestorage.app',
-  apiKey: 'AIzaSyA8vEkftJaDguw8JDhkWH_Tm8aR-TRYMi4',
-  authDomain: 'apexvest-2jp25.firebaseapp.com',
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   measurementId: '',
-  messagingSenderId: '430948091820',
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();

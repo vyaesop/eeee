@@ -1,133 +1,180 @@
-"use client";
-
-import { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { getTier, TIERS, MOCK_REFERRALS } from "@/lib/constants";
-import type { Tier } from "@/lib/constants";
+'use client';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/use-auth";
+import { getTierFromDeposit, tiers } from "@/lib/constants";
+import { UserData } from "@/lib/types";
+import {
+  Banknote,
+  Gem,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { doc, onSnapshot, updateDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
-import StatCard from "./stat-card";
-import ApyMeter from "./apy-meter";
-import DepositCard from "./deposit-card";
-import ReferralCard from "./referral-card";
-import { TrendingUp, DollarSign, Users, Award, Zap } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
-const REFERRAL_BONUS_RATE = 0.05;
+interface DashboardClientProps {
+  userData: UserData;
+}
 
-export default function DashboardClient() {
-  const [totalDeposit, setTotalDeposit] = useState(0);
-  const [earningsBalance, setEarningsBalance] = useState(0);
-  const [isCompounding, setIsCompounding] = useState(true);
-  const [tier, setTier] = useState<Tier>(TIERS.OBSERVER);
-  const [user, setUser] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
+export const DashboardClient: React.FC<DashboardClientProps> = ({ userData: initialUserData }) => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [userData, setUserData] = useState<UserData>(initialUserData);
 
-  const referralBonus = MOCK_REFERRALS.reduce((acc, referral) => acc + referral.deposit * REFERRAL_BONUS_RATE, 0);
-
-  useEffect(() => {
-    setIsClient(true);
-    const storedUser = sessionStorage.getItem("apexvest_user");
-    if(storedUser) {
-        setUser(storedUser);
-        const savedData = localStorage.getItem(`apexvest_data_${storedUser}`);
-        if (savedData) {
-            const { totalDeposit, earningsBalance, isCompounding } = JSON.parse(savedData);
-            setTotalDeposit(totalDeposit);
-            setEarningsBalance(earningsBalance);
-            setIsCompounding(isCompounding);
-        }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isClient && user) {
-      const dataToSave = JSON.stringify({ totalDeposit, earningsBalance, isCompounding });
-      localStorage.setItem(`apexvest_data_${user}`, dataToSave);
-    }
-    setTier(getTier(totalDeposit));
-  }, [totalDeposit, earningsBalance, isCompounding, isClient, user]);
-
-  const calculateAndAddInterest = useCallback(() => {
-    if (tier.monthlyRate > 0) {
-      const principal = isCompounding ? totalDeposit + earningsBalance : totalDeposit;
-      const dailyRate = Math.pow(1 + tier.monthlyRate, 1 / 30) - 1;
-      const dailyEarnings = principal * dailyRate;
-      setEarningsBalance(prev => prev + dailyEarnings);
-    }
-  }, [totalDeposit, earningsBalance, isCompounding, tier]);
-
-  useEffect(() => {
-    const interval = setInterval(calculateAndAddInterest, 2000); // Update every 2 seconds for a "live" feel
-    return () => clearInterval(interval);
-  }, [calculateAndAddInterest]);
-
-  const handleDeposit = (amount: number) => {
-    setTotalDeposit(prev => prev + amount);
-  };
+  const { totalDeposit, autoCompounding, earningsBalance, username } = userData;
   
-  if (!isClient) return null;
+  const [apy, setApy] = useState(0);
 
+  const currentTierName = getTierFromDeposit(totalDeposit);
+  const currentTier = tiers.find(tier => tier.name === currentTierName);
+
+  useEffect(() => {
+    if (!username) return;
+    const unsub = onSnapshot(doc(db, "users", username), (doc) => {
+      if (doc.exists()) {
+        setUserData(doc.data() as UserData);
+      }
+    });
+    return () => unsub();
+  }, [username]);
+
+  useEffect(() => {
+    if (!currentTier || currentTier.name === 'Observer') {
+      setApy(0);
+      return;
+    }
+
+    const dailyRate = currentTier.dailyReturn ?? 0;
+    const annualRate = Math.pow(1 + dailyRate, 365) - 1;
+    setApy(annualRate * 100);
+
+  }, [currentTier]);
+
+  const handleAutoCompoundingToggle = async (checked: boolean) => {
+    if (!username) return;
+    const userRef = doc(db, "users", username);
+    try {
+      await updateDoc(userRef, { autoCompounding: checked });
+      toast({
+        title: "Settings Updated",
+        description: `Auto-compounding has been ${checked ? 'enabled' : 'disabled'}.`
+      });
+    } catch (error) {
+      console.error("Failed to update auto-compounding", error);
+      toast({
+        variant: 'destructive',
+        title: "Update Failed",
+        description: "Could not update your settings. Please try again."
+      });
+    }
+  }
+  
   return (
-    <>
-      <div className="grid gap-4 md:grid-cols-2 md:gap-8 lg:grid-cols-4">
-        <StatCard
-            title="Membership Tier"
-            value={tier.name}
-            icon={<Award className="h-5 w-5 text-muted-foreground" />}
-            description="Based on your total deposit"
-        >
-            <div className="w-full h-2 rounded-full mt-2 bg-muted">
-                <div style={{width: `${tier.apy / TIERS.PLATINUM.apy * 100}%`, backgroundColor: tier.color}} className="h-2 rounded-full transition-all duration-500"></div>
-            </div>
-        </StatCard>
-        <StatCard
-            title="Total Principal"
-            value={formatCurrency(totalDeposit)}
-            icon={<DollarSign className="h-5 w-5 text-muted-foreground" />}
-            description="Your total deposited amount"
-        />
-        <StatCard
-            title="Earnings Balance"
-            value={formatCurrency(earningsBalance)}
-            icon={<TrendingUp className="h-5 w-5 text-muted-foreground" />}
-            description="Live compounded returns"
-        />
-        <StatCard
-            title="Referral Bonus"
-            value={formatCurrency(referralBonus)}
-            icon={<Users className="h-5 w-5 text-muted-foreground" />}
-            description={`From ${MOCK_REFERRALS.length} successful referrals`}
-        />
-      </div>
-
-      <div className="grid gap-4 md:gap-8 lg:grid-cols-2 xl:grid-cols-3 mt-8">
-        <div className="xl:col-span-2 grid gap-4 md:gap-8">
-          <DepositCard 
-            currentTier={tier} 
-            handleDeposit={handleDeposit} 
-            isCompounding={isCompounding} 
-            setIsCompounding={setIsCompounding}
-            />
-          {user && <ReferralCard username={user} referrals={MOCK_REFERRALS} />}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="lg:col-span-2 space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold font-headline">Welcome, {username}</h1>
+          <p className="text-muted-foreground">Here is your financial overview for today.</p>
         </div>
-        <Card className="flex flex-col items-center justify-center p-6 row-start-1 lg:row-start-auto">
-            <CardContent className="flex flex-col items-center justify-center text-center p-0">
-                <Zap className="h-8 w-8 text-amber-500 mb-2" />
-                <h3 className="text-lg font-semibold mb-2">Current APY</h3>
-                <ApyMeter apy={tier.apy} />
-                <p className="text-sm text-muted-foreground mt-4">
-                    Your Annual Percentage Yield increases with your membership tier.
-                </p>
-                <Separator className="my-4"/>
-                <div className="text-sm text-muted-foreground">
-                    <p><span className="font-semibold text-foreground">Silver:</span> {Math.round(TIERS.SILVER.apy * 100)}% APY</p>
-                    <p><span className="font-semibold text-foreground">Gold:</span> {Math.round(TIERS.GOLD.apy * 100)}% APY</p>
-                    <p><span className="font-semibold text-foreground">Platinum:</span> {Math.round(TIERS.PLATINUM.apy * 100)}% APY</p>
-                </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Principal</CardTitle>
+              <Banknote className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(totalDeposit)}</div>
+              <p className="text-xs text-muted-foreground">Your initial investment</p>
             </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Earnings</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(earningsBalance)}</div>
+              <p className="text-xs text-muted-foreground">Profits generated</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+              <Gem className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{formatCurrency(totalDeposit + earningsBalance)}</div>
+              <p className="text-xs text-muted-foreground">Principal + Earnings</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Performance</CardTitle>
+            <CardDescription>
+              Your estimated annual yield based on your current tier.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between mb-2">
+              <p className="font-medium">Annual Percentage Yield (APY)</p>
+              <p className="font-bold text-primary">{apy.toFixed(2)}%</p>
+            </div>
+            <Progress value={apy} className="w-full" />
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Based on your {currentTierName} tier at{" "}
+              {currentTier?.dailyReturn
+                ? (currentTier.dailyReturn * 100).toFixed(2)
+                : 0}% daily return.
+            </p>
+          </CardContent>
         </Card>
       </div>
-    </>
+
+      <div className="space-y-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Account Settings</CardTitle>
+            <CardDescription>Manage your investment preferences.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <p className="font-semibold">Auto-Compounding</p>
+                <p className="text-sm text-muted-foreground">
+                  Reinvest earnings for exponential growth.
+                </p>
+              </div>
+              <Switch
+                checked={autoCompounding}
+                onCheckedChange={handleAutoCompoundingToggle}
+              />
+            </div>
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <p className="font-semibold">Membership Tier</p>
+                <p className="text-sm text-muted-foreground">
+                  Your current investment level.
+                </p>
+              </div>
+              <div className="font-bold text-primary">{currentTierName}</div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
-}
+};
