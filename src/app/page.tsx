@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -6,9 +7,8 @@ import { useState } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { TIERS } from "@/lib/constants";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,11 +26,11 @@ import { ShieldCheck } from "lucide-react";
 
 const formSchema = z.object({
   username: z.string().min(1, "Username is required."),
-  invitationCode: z.string().min(1, "Invitation code is required."),
+  password: z.string().optional(), // In a real app, you'd validate this
 });
 
-const VALID_INVITATION_CODE = "APEX2024";
-const ADMIN_INVITATION_CODE = "ADMIN2024";
+const ADMIN_USERNAME = "admin";
+const ADMIN_PASSWORD = "ADMIN2024"; // Using the old invitation code as password for admin
 
 export default function LoginPage() {
   const router = useRouter();
@@ -41,61 +41,48 @@ export default function LoginPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
-      invitationCode: "",
+      password: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    
-    const isAdmin = values.username === "admin" && values.invitationCode === ADMIN_INVITATION_CODE;
-    const isUser = values.invitationCode === VALID_INVITATION_CODE;
 
-    if (isAdmin) {
+    // Admin login check
+    if (values.username === ADMIN_USERNAME && values.password === ADMIN_PASSWORD) {
       if (typeof window !== "undefined") {
         sessionStorage.setItem("apexvest_user", values.username);
       }
       toast({ title: "Login Successful", description: "Welcome back, Admin!" });
-      router.push("/dashboard");
+      router.push("/dashboard/admin");
+      setIsLoading(false);
       return;
     }
 
-    if (isUser) {
-      try {
-        const userRef = doc(db, "users", values.username);
-        const userSnap = await getDoc(userRef);
+    // Regular user login check
+    try {
+      const userRef = doc(db, "users", values.username);
+      const userSnap = await getDoc(userRef);
 
-        if (!userSnap.exists()) {
-          // Create new user if they don't exist
-          const newUser = {
-            username: values.username,
-            totalDeposit: 1000,
-            tier: TIERS.SILVER.name,
-            earnings: 50,
-            joined: new Date().toLocaleDateString(),
-          };
-          await setDoc(userRef, newUser);
-          toast({ title: "Account Created!", description: "Welcome to ApexVest, your journey starts now." });
-        } else {
-            toast({ title: "Login Successful", description: `Welcome back, ${values.username}!` });
-        }
-
+      if (userSnap.exists()) {
+        // In a real app, you'd check a password here.
+        // For this demo, we'll just log them in if the user exists.
+        toast({ title: "Login Successful", description: `Welcome back, ${values.username}!` });
         if (typeof window !== "undefined") {
           sessionStorage.setItem("apexvest_user", values.username);
         }
         router.push("/dashboard");
-
-      } catch (error) {
-        console.error("Firestore operation failed:", error);
-        toast({ variant: "destructive", title: "Login Failed", description: "Could not connect to the database." });
-        setIsLoading(false);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Login Failed",
+          description: "User not found. If you're new, please join first.",
+        });
       }
-    } else {
-      toast({
-        variant: "destructive",
-        title: "Login Failed",
-        description: "Invalid username or invitation code. Please try again.",
-      });
+    } catch (error) {
+      console.error("Firestore operation failed:", error);
+      toast({ variant: "destructive", title: "Login Failed", description: "Could not connect to the database." });
+    } finally {
       setIsLoading(false);
     }
   }
@@ -134,12 +121,12 @@ export default function LoginPage() {
               />
               <FormField
                 control={form.control}
-                name="invitationCode"
+                name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invitation Code</FormLabel>
+                    <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your exclusive code" type="password" {...field} />
+                      <Input placeholder="Enter your password" type="password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -151,12 +138,20 @@ export default function LoginPage() {
             </form>
           </Form>
           <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">Don't have an invitation code?</p>
+            <p className="text-muted-foreground">New to ApexVest?</p>
             <Link
-              href="/membership"
+              href="/join"
               className="font-medium text-primary hover:underline"
             >
-              Learn about membership
+              Join the club
+            </Link>
+          </div>
+           <div className="mt-4 text-center text-sm">
+             <Link
+              href="/membership"
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              Learn about membership benefits
             </Link>
           </div>
         </CardContent>
