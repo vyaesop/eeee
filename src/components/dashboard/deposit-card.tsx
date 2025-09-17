@@ -25,7 +25,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { TIERS } from "@/lib/constants";
+import { tiers as allTiers } from "@/lib/constants";
 import type { Tier } from "@/lib/constants";
 import { formatCurrency } from "@/lib/utils";
 
@@ -40,7 +40,7 @@ type DepositCardProps = {
   setIsCompounding: (value: boolean) => void;
 };
 
-const tiers = [TIERS.SILVER, TIERS.GOLD, TIERS.PLATINUM];
+const tiers = allTiers.filter(t => t.name !== 'Observer');
 
 export default function DepositCard({ handleDeposit, isCompounding, setIsCompounding }: DepositCardProps) {
   const { toast } = useToast();
@@ -116,8 +116,8 @@ export default function DepositCard({ handleDeposit, isCompounding, setIsCompoun
             {tiers.map((tier) => (
                 <div key={tier.name} className="p-3 bg-muted/50 rounded-lg">
                     <p className="font-bold text-sm">{tier.name}</p>
-                    <p className="text-xs text-muted-foreground">{`$${tier.minDeposit / 1000}k+`}</p>
-                    <p className="text-xs font-semibold text-accent">{tier.monthlyRate * 100}% Monthly</p>
+                    <p className="text-xs text-muted-foreground">{`${formatCurrency(tier.minDeposit)}+`}</p>
+                    <p className="text-xs font-semibold text-accent">{((Math.pow(1 + tier.dailyReturn, 30) - 1)*100).toFixed(2)}% Monthly</p>
                 </div>
             ))}
         </div>

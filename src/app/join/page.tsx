@@ -23,6 +23,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { UserPlus } from "lucide-react";
+import { getTierFromDeposit } from "@/lib/constants";
 
 const formSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters."),
@@ -79,15 +80,15 @@ export default function JoinPage() {
             setIsLoading(false);
             return;
         }
-
+        const initialDeposit = 0;
         const newUser = {
             username: values.username,
-            totalDeposit: 0,
+            totalDeposit: initialDeposit,
             earningsBalance: 0,
             autoCompounding: true,
             joined: new Date().toISOString(),
             referredBy: referrer || null,
-            membershipTier: 'Observer',
+            membershipTier: getTierFromDeposit(initialDeposit),
         };
         await setDoc(userRef, newUser);
         

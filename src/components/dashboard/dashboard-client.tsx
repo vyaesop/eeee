@@ -56,8 +56,8 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userData: init
     }
 
     const dailyRate = currentTier.dailyReturn ?? 0;
-    const annualRate = Math.pow(1 + dailyRate, 365) - 1;
-    setApy(annualRate * 100);
+    const compoundedApy = Math.pow(1 + dailyRate, 365) - 1;
+    setApy(compoundedApy * 100);
 
   }, [currentTier]);
 

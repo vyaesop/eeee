@@ -10,7 +10,7 @@ const chartConfig = {
   },
   platinum: {
     label: "Platinum",
-    color: TIERS.PLATINUM.color,
+    color: "hsl(var(--chart-1))",
   },
 } satisfies ChartConfig
 
@@ -19,8 +19,8 @@ type ApyMeterProps = {
 };
 
 export default function ApyMeter({ apy }: ApyMeterProps) {
-  const chartData = [{ month: "1", apy: Math.round(apy * 100) }];
-  const maxApy = Math.round(TIERS.PLATINUM.apy * 100);
+  const chartData = [{ month: "1", apy: Math.round(apy) }];
+  const maxApy = Math.round((Math.pow(1 + TIERS.PLATINUM.dailyReturn, 365) - 1) * 100);
 
   return (
     <ChartContainer
@@ -54,7 +54,7 @@ export default function ApyMeter({ apy }: ApyMeterProps) {
       </RadialBarChart>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
          <p className="text-5xl font-bold font-headline text-accent">
-            {Math.round(apy * 100)}%
+            {Math.round(apy)}%
         </p>
         <p className="text-sm text-muted-foreground">APY</p>
       </div>

@@ -30,7 +30,7 @@ const formSchema = z.object({
 });
 
 const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "ADMIN2024"; // Using the old invitation code as password for admin
+const ADMIN_PASSWORD = "ADMIN2024";
 
 export default function LoginPage() {
   const router = useRouter();
