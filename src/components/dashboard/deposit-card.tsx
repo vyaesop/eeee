@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { doc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import { getTierFromDeposit, TIERS } from '@/lib/constants';
+import { getTierFromDeposit } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 
 const depositSchema = z.object({
@@ -75,7 +75,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
         title: "Deposit Successful",
         description: `Br ${values.amount.toLocaleString()} has been added to your account.`,
       });
-      onDeposit(); 
+      if(onDeposit) onDeposit(); 
       form.reset();
       setIsDialogOpen(false);
     } catch (error) {

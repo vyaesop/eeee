@@ -9,7 +9,7 @@ import { Header } from "@/components/header";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "ApexVest",
+  title: "Ethiopian Investment Group",
   description: "Next-gen investment platform",
 };
 

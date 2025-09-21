@@ -23,7 +23,7 @@ export const ReferralProgramCard = () => {
 
   useEffect(() => {
     if (user && user.displayName) {
-      setReferralLink(`${window.location.origin}/register?ref=${user.displayName}`);
+      setReferralLink(`${window.location.origin}/?ref=${user.displayName}`);
     }
   }, [user]);
 

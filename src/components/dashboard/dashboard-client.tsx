@@ -13,23 +13,27 @@ import { getTierFromDeposit, tiers } from "@/lib/constants";
 import { UserData } from "@/lib/types";
 import {
   Banknote,
-  Gem,
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { DepositCard } from "./deposit-card";
 import { ReferralProgramCard } from "./referral-card";
+import { EIGLogo } from "../eig-logo";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 
 interface DashboardClientProps {
-  userData: UserData;
+  initialUserData: UserData;
 }
 
-export const DashboardClient: React.FC<DashboardClientProps> = ({ userData }) => {
+export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserData }) => {
   const { user } = useAuth();
   const router = useRouter();
+  const [userData, setUserData] = useState(initialUserData);
   
   const totalDeposit = userData?.totalDeposit ?? 0;
   const autoCompounding = userData?.autoCompounding ?? false;
@@ -41,6 +45,26 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userData }) =>
   const currentTierName = getTierFromDeposit(totalDeposit);
   const currentTier = tiers.find(tier => tier.name === currentTierName);
 
+  const fetchUserData = useCallback(async () => {
+    if (!user?.displayName) return;
+    const userRef = doc(db, 'users', user.displayName);
+    const docSnap = await getDoc(userRef);
+    if (docSnap.exists()) {
+      setUserData(docSnap.data() as UserData);
+    }
+  }, [user?.displayName]);
+
+  useEffect(() => {
+    if (user?.displayName) {
+      const unsub = onSnapshot(doc(db, "users", user.displayName), (doc) => {
+        if (doc.exists()) {
+          setUserData(doc.data() as UserData);
+        }
+      });
+      return () => unsub();
+    }
+  }, [user?.displayName]);
+  
   useEffect(() => {
     setEarnings(earningsBalance);
 
@@ -82,7 +106,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userData }) =>
               <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
-                    <Gem className="w-4 h-4 mr-2" />
+                    <EIGLogo className="w-4 h-4 mr-2" />
                     Investment Package
                   </CardTitle>
                   <p className="text-xl font-bold">{currentTierName}</p>
@@ -99,7 +123,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ userData }) =>
               </CardContent>
             </Card>
 
-            <DepositCard />
+            <DepositCard onDeposit={fetchUserData} />
 
             <Card className="shadow-lg">
               <CardHeader>

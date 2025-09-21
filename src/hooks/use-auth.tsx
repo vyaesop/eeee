@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const username = sessionStorage.getItem('apexvest_user');
+    const username = sessionStorage.getItem('eig_user');
     if (username) {
       setUser({ displayName: username, email: null }); // email can be fetched if needed
     }
@@ -65,8 +65,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     await setDoc(userRef, newUser);
 
-    sessionStorage.setItem('apexvest_user', username);
-    setUser({ displayName: username, email });
+    // No auto login after sign up
+    // sessionStorage.setItem('eig_user', username);
+    // setUser({ displayName: username, email });
   }, []);
 
   const logIn = useCallback(async (username: string, password?: string) => {
@@ -74,8 +75,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userSnap = await getDoc(userRef);
 
     if (username === 'admin') {
-        sessionStorage.setItem('apexvest_user', 'admin');
-        setUser({ displayName: 'admin', email: 'admin@apexvest.com' });
+        sessionStorage.setItem('eig_user', 'admin');
+        setUser({ displayName: 'admin', email: 'admin@eig.com' });
         return;
     }
 
@@ -89,12 +90,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("Invalid username or password");
     }
 
-    sessionStorage.setItem('apexvest_user', username);
+    sessionStorage.setItem('eig_user', username);
     setUser({ displayName: username, email: userSnap.data().email });
   }, []);
 
   const signOut = useCallback(() => {
-    sessionStorage.removeItem('apexvest_user');
+    sessionStorage.removeItem('eig_user');
     setUser(null);
     router.push('/');
   }, [router]);

@@ -15,7 +15,7 @@ const AboutPage = () => {
     <div className="min-h-screen bg-background text-foreground">
       <main className="container mx-auto py-12 px-4">
         <section className="text-center mb-16">
-          <h1 className="text-5xl font-headline text-primary mb-4">About ApexVest</h1>
+          <h1 className="text-5xl font-headline text-primary mb-4">About Ethiopian Investment Group</h1>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             We are a forward-thinking investment firm dedicated to democratizing wealth creation through innovative, data-driven strategies.
           </p>

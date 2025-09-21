@@ -13,11 +13,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, LogOut, ShieldCheck, User, Cog } from "lucide-react";
+import { LogOut, Cog, User } from "lucide-react";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UserData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
+import { EIGLogo } from "@/components/eig-logo";
 
 const UserDataContext = createContext<UserData | null>(null);
 
@@ -36,7 +37,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     setIsClient(true);
-    const storedUser = sessionStorage.getItem("apexvest_user");
+    const storedUser = sessionStorage.getItem("eig_user");
     if (!storedUser) {
       router.replace("/");
       return;
@@ -69,7 +70,7 @@ export default function DashboardLayout({
   }, [router]);
 
   const handleLogout = () => {
-    sessionStorage.removeItem("apexvest_user");
+    sessionStorage.removeItem("eig_user");
     router.replace("/");
   };
 
@@ -96,8 +97,8 @@ export default function DashboardLayout({
               href="/dashboard"
               className="flex items-center gap-2 text-lg font-semibold md:text-base text-primary"
             >
-              <ShieldCheck className="h-6 w-6" />
-              <span className="font-headline">ApexVest</span>
+              <EIGLogo className="h-6 w-6" />
+              <span className="font-headline">Ethiopian Investment Group</span>
             </Link>
             
             {isAdmin && (

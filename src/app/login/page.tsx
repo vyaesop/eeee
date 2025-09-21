@@ -72,7 +72,7 @@ export default function LoginPage() {
                 <LogIn className="w-12 h-12 text-primary" />
             </div>
           <h1 className="text-3xl font-bold font-headline">Welcome Back</h1>
-          <p className="text-muted-foreground">Log in to your ApexVest account.</p>
+          <p className="text-muted-foreground">Log in to your Ethiopian Investment Group account.</p>
         </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

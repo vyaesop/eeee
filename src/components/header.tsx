@@ -2,10 +2,11 @@
 
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Menu, Gem } from "lucide-react";
+import { Menu } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 import { useRouter } from "next/navigation";
+import { EIGLogo } from "./eig-logo";
 
 const navLinks = [
   { href: "/", label: "Home" },
@@ -26,8 +27,8 @@ export const Header = () => {
     <header className="bg-background text-foreground shadow-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <Gem className="h-6 w-6 text-primary" />
-          <span className="font-headline">ApexVest</span>
+          <EIGLogo className="h-8 w-8" />
+          <span className="font-headline">Ethiopian Investment Group</span>
         </Link>
 
         {/* Desktop Navigation */}

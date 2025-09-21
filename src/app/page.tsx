@@ -122,7 +122,7 @@ export default function JoinPage() {
       <div className="flex flex-col items-center text-center mb-8">
         <UserPlus className="w-16 h-16 text-primary mb-4" />
         <h1 className="text-5xl font-headline font-bold text-primary">
-          Join ApexVest
+          Join Ethiopian Investment Group
         </h1>
         <p className="text-muted-foreground mt-2">
           Start your journey to premier financial opportunities.

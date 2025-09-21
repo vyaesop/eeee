@@ -18,14 +18,14 @@ import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
 import { ShieldCheck, Users, DollarSign, Activity, MoreHorizontal, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
-import { TIERS } from "@/lib/constants";
+import { tiers } from "@/lib/constants";
 import { db } from "@/lib/firebase";
 
 type User = {
     id: string;
     username: string;
     totalDeposit: number;
-    tier: string;
+    membershipTier: string;
     earnings: number;
     joined: string;
 };
@@ -44,7 +44,7 @@ export default function AdminPage() {
 
     useEffect(() => {
         setIsClient(true);
-        const storedUser = sessionStorage.getItem("apexvest_user");
+        const storedUser = sessionStorage.getItem("eig_user");
         if (storedUser !== 'admin') {
             router.replace("/dashboard");
         } else {
@@ -77,17 +77,17 @@ export default function AdminPage() {
     }
 
     const tierCounts = users.reduce((acc, user) => {
-        const tierName = user.tier || "Observer";
+        const tierName = user.membershipTier || "Observer";
         acc[tierName] = (acc[tierName] || 0) + 1;
         return acc;
     }, {} as Record<string, number>);
 
-    const chartData = [
-      { tier: "Silver", users: tierCounts.Silver || 0, fill: TIERS.SILVER.color },
-      { tier: "Gold", users: tierCounts.Gold || 0, fill: TIERS.GOLD.color },
-      { tier: "Platinum", users: tierCounts.Platinum || 0, fill: TIERS.PLATINUM.color },
-    ]
-
+    const chartData = tiers.filter(t => t.name !== 'Observer').map(tier => ({
+      tier: tier.name,
+      users: tierCounts[tier.name] || 0,
+      fill: tier.color
+    }));
+    
     const totalUsers = users.length;
     const totalInvested = users.reduce((sum, user) => sum + user.totalDeposit, 0);
 
@@ -170,7 +170,7 @@ export default function AdminPage() {
                                         <TableRow key={user.id}>
                                             <TableCell className="font-medium">{user.username}</TableCell>
                                             <TableCell>
-                                                <Badge style={{ backgroundColor: TIERS[user.tier.toUpperCase()]?.color || '#ccc', color: '#000' }} variant="outline">{user.tier}</Badge>
+                                                <Badge style={{ backgroundColor: tiers.find(t => t.name === user.membershipTier)?.color || '#ccc' }} variant="outline">{user.membershipTier}</Badge>
                                             </TableCell>
                                             <TableCell className="text-right">{formatCurrency(user.totalDeposit)}</TableCell>
                                             <TableCell className="text-right">{formatCurrency(user.earnings)}</TableCell>
@@ -216,5 +216,4 @@ export default function AdminPage() {
 
         </div>
     )
-
-    
+}

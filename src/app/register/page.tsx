@@ -183,12 +183,12 @@ export default function RegisterPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Registration Successful!</AlertDialogTitle>
             <AlertDialogDescription>
-              Welcome to ApexVest! You have been automatically logged in.
+              Welcome to Ethiopian Investment Group! You can now log in.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction asChild>
-              <Link href="/dashboard">Go to Dashboard</Link>
+              <Link href="/login">Go to Login</Link>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

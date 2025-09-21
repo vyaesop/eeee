@@ -37,5 +37,5 @@ export default function DashboardPage() {
     );
   }
 
-  return <DashboardClient userData={userData} />;
+  return <DashboardClient initialUserData={userData} />;
 }
