@@ -1,40 +1,34 @@
-
 'use client';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { tiers as allTiers } from "@/lib/constants";
+import { tiers } from "@/lib/constants";
 import { useRouter } from 'next/navigation';
-import { useUserData } from "@/app/dashboard/layout";
+import { useAuth } from "@/hooks/use-auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from '@/lib/utils';
-import { getTierFromDeposit } from '@/lib/constants';
 
 const MembershipPage = () => {
   const router = useRouter();
-  const userData = useUserData();
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  const availableTiers = allTiers.filter(t => t.name !== 'Observer');
-
-  const chartData = availableTiers.map(tier => ({
+  const chartData = tiers.filter(t => t.name !== 'Observer').map(tier => ({
     name: tier.name,
-    'APY (%)': tier.apy ? Math.round(tier.apy * 100) : 0,
-    fill: tier.color,
+    'Potential Growth (%)': tier.apy * 100,
   }));
 
   const handleChoosePlan = async (tierName: string, minDeposit: number) => {
-    if (!userData?.username) {
+    if (!user) {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in to choose a plan." });
       return;
     }
 
     try {
-      const userRef = doc(db, "users", userData.username);
+      const userRef = doc(db, "users", user.displayName!);
       await updateDoc(userRef, {
-        membershipTier: getTierFromDeposit(minDeposit),
+        membershipTier: tierName,
         totalDeposit: minDeposit
       });
       toast({ title: "Success", description: `You have successfully chosen the ${tierName} plan.` });
@@ -46,53 +40,44 @@ const MembershipPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold font-headline text-primary mb-4">Choose Your Membership</h1>
-            <p className="text-lg text-muted-foreground">Select the investment tier that best suits your financial goals.</p>
-        </div>
+    <div className="min-h-screen bg-background text-foreground p-8">
+      <h1 className="text-4xl font-bold text-center mb-8">Choose Your Investment Package</h1>
+      <p className="text-center text-lg text-muted-foreground mb-12">Select the asset package that aligns with your financial strategy.</p>
 
-        <Card className="mb-12 shadow-lg">
+      <Card className="mb-12 shadow-lg">
+        <CardHeader>
+          <CardTitle>Investment Package Potential (APY)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" height={80} />
+              <YAxis />
+              <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+              <Legend />
+              <Bar dataKey="Potential Growth (%)" fill="#8884d8" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-center">
+        {tiers.filter(t => t.name !== 'Observer').map(tier => (
+          <Card key={tier.name} className="shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col">
             <CardHeader>
-              <CardTitle>Annual Percentage Yield (APY) Potential</CardTitle>
-              <CardDescription>Estimated annual returns for each tier.</CardDescription>
+              <CardTitle className="text-2xl">{tier.name}</CardTitle>
             </CardHeader>
-            <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" angle={-20} textAnchor="end" height={60} interval={0} tick={{ fontSize: 12 }} />
-                <YAxis unit="%" />
-                <Tooltip 
-                    formatter={(value) => `${value}%`}
-                    contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
-                />
-                <Legend />
-                <Bar dataKey="APY (%)" />
-                </BarChart>
-            </ResponsiveContainer>
+            <CardContent className="flex-grow">
+              <p className="text-3xl font-bold mb-4">Br {tier.minDeposit.toLocaleString()}</p>
+              <p className="text-muted-foreground mb-2">Daily Return: {(tier.dailyReturn * 100).toFixed(2)}%</p>
+              <p className="text-muted-foreground mb-4">Annual Potential (APY): {(tier.apy * 100).toFixed(2)}%</p>
             </CardContent>
-        </Card>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {availableTiers.map(tier => (
-            <Card key={tier.name} className="flex flex-col shadow-lg hover:shadow-primary/20 hover:shadow-2xl transition-all duration-300 border-2 border-transparent hover:border-primary">
-                <CardHeader className="text-center">
-                <CardTitle className="text-2xl font-headline" style={{color: tier.color}}>{tier.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="flex-grow flex flex-col justify-between text-center">
-                  <div>
-                    <p className="text-3xl font-bold mb-2">{formatCurrency(tier.minDeposit)} - {tier.maxDeposit === Infinity ? 'Unlimited' : formatCurrency(tier.maxDeposit)}</p>
-                    <p className="text-muted-foreground mb-4">Principal Investment</p>
-                    <p className="text-lg font-semibold text-accent mb-1">{(tier.dailyReturn * 100).toFixed(3)}% Daily Return</p>
-                    <p className="text-sm text-muted-foreground mb-6">~{tier.apy ? (tier.apy * 100).toFixed(2) : 0}% APY</p>
-                  </div>
-                  <Button onClick={() => handleChoosePlan(tier.name, tier.minDeposit)} className="w-full mt-auto">Choose Plan</Button>
-                </CardContent>
-            </Card>
-            ))}
-        </div>
+            <div className="p-6 pt-0">
+              <Button onClick={() => handleChoosePlan(tier.name, tier.minDeposit)} className="w-full">Choose Plan</Button>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

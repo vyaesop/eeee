@@ -1,127 +1,141 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from 'react';
+import { z } from 'zod';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { useToast } from "@/hooks/use-toast";
-import { tiers as allTiers } from "@/lib/constants";
-import type { Tier } from "@/lib/constants";
-import { formatCurrency } from "@/lib/utils";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { doc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth';
+import { getTierFromDeposit, TIERS } from '@/lib/constants';
+import { Loader2 } from 'lucide-react';
 
-const formSchema = z.object({
-  amount: z.coerce.number().positive("Amount must be positive.").min(1, "Minimum deposit is $1."),
+const depositSchema = z.object({
+  amount: z.preprocess(
+    (a) => parseFloat(z.string().parse(a)),
+    z.number().positive("Amount must be positive")
+  ),
 });
 
-type DepositCardProps = {
-  currentTier: Tier;
-  handleDeposit: (amount: number) => void;
-  isCompounding: boolean;
-  setIsCompounding: (value: boolean) => void;
-};
-
-const tiers = allTiers.filter(t => t.name !== 'Observer');
-
-export default function DepositCard({ handleDeposit, isCompounding, setIsCompounding }: DepositCardProps) {
+export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isDepositing, setIsDepositing] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  const form = useForm<z.infer<typeof depositSchema>>({
+    resolver: zodResolver(depositSchema),
     defaultValues: {
-      amount: 1000,
+      amount: 0,
     },
   });
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-    setTimeout(() => {
-      handleDeposit(values.amount);
+  async function onSubmit(values: z.infer<typeof depositSchema>) {
+    if (!user || !user.displayName) return;
+    setIsDepositing(true);
+
+    const userRef = doc(db, "users", user.displayName);
+
+    try {
+      await runTransaction(db, async (transaction) => {
+        const userDoc = await transaction.get(userRef);
+        if (!userDoc.exists()) {
+          throw "Document does not exist!";
+        }
+
+        const newTotalDeposit = (userDoc.data().totalDeposit || 0) + values.amount;
+        const newTier = getTierFromDeposit(newTotalDeposit);
+
+        transaction.update(userRef, {
+          totalDeposit: increment(values.amount),
+          membershipTier: newTier,
+        });
+        
+        const referrer = userDoc.data().referredBy;
+        if (referrer) {
+            const referrerRef = doc(db, "users", referrer);
+            const referrerDoc = await transaction.get(referrerRef);
+            if (referrerDoc.exists()) {
+                const referralBonus = values.amount * 0.05;
+                transaction.update(referrerRef, { earningsBalance: increment(referralBonus) });
+                
+                const referralSubcollectionRef = doc(db, `users/${referrer}/referrals`, user.displayName! );
+                transaction.set(referralSubcollectionRef, { deposit: values.amount }, { merge: true });
+            }
+        }
+      });
+
       toast({
         title: "Deposit Successful",
-        description: `${formatCurrency(values.amount)} has been added to your principal.`,
+        description: `Br ${values.amount.toLocaleString()} has been added to your account.`,
       });
+      onDeposit(); 
       form.reset();
-      setIsLoading(false);
-    }, 1000);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Deposit failed: ", error);
+      toast({
+        variant: "destructive",
+        title: "Deposit Failed",
+        description: "There was a problem processing your deposit. Please try again.",
+      });
+    } finally {
+      setIsDepositing(false);
+    }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Manage Your Portfolio</CardTitle>
-        <CardDescription>
-          Deposit funds to increase your principal and unlock higher tiers.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Card className="shadow-lg">
+            <CardHeader>
+                <CardTitle>Deposit Funds</CardTitle>
+                <CardDescription>Add money to your account to start earning.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <DialogTrigger asChild>
+                    <Button className="w-full">Deposit</Button>
+                </DialogTrigger>
+            </CardContent>
+        </Card>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Make a Deposit</DialogTitle>
+          <DialogDescription>
+            Enter the amount you wish to deposit. The funds will be added to your principal balance.
+          </DialogDescription>
+        </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex items-end gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
-                <FormItem className="flex-grow">
-                  <FormLabel>Deposit Amount</FormLabel>
+                <FormItem>
+                  <FormLabel>Amount (in Br)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="1000" {...field} />
+                    <Input type="number" placeholder="e.g., 5000" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Depositing..." : "Deposit"}
-            </Button>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary" disabled={isDepositing}>Cancel</Button>
+              </DialogClose>
+              <Button type="submit" disabled={isDepositing}>
+                {isDepositing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Processing...</> : "Confirm Deposit"}
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
-        <div className="flex items-center justify-between rounded-lg border p-4">
-          <div className="space-y-0.5">
-            <Label htmlFor="compound-switch">Automatic Compounding</Label>
-            <p className="text-xs text-muted-foreground">
-              Automatically re-invest your earnings to maximize growth.
-            </p>
-          </div>
-          <Switch
-            id="compound-switch"
-            checked={isCompounding}
-            onCheckedChange={setIsCompounding}
-            aria-label="Toggle automatic compounding"
-          />
-        </div>
-      </CardContent>
-      <CardFooter className="flex-col items-start gap-4">
-        <h4 className="font-semibold">Tier Breakdowns</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-            {tiers.map((tier) => (
-                <div key={tier.name} className="p-3 bg-muted/50 rounded-lg">
-                    <p className="font-bold text-sm">{tier.name}</p>
-                    <p className="text-xs text-muted-foreground">{`${formatCurrency(tier.minDeposit)}+`}</p>
-                    <p className="text-xs font-semibold text-accent">{((Math.pow(1 + tier.dailyReturn, 30) - 1)*100).toFixed(2)}% Monthly</p>
-                </div>
-            ))}
-        </div>
-      </CardFooter>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
-}
+};

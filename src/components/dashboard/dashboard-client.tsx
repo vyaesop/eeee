@@ -18,163 +18,190 @@ import {
   Zap,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, updateDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-import { useToast } from "@/hooks/use-toast";
-import { formatCurrency } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { DepositCard } from "./deposit-card";
+import { ReferralProgramCard } from "./referral-card";
 
 interface DashboardClientProps {
   userData: UserData;
 }
 
-export const DashboardClient: React.FC<DashboardClientProps> = ({ userData: initialUserData }) => {
+export const DashboardClient: React.FC<DashboardClientProps> = ({ userData }) => {
   const { user } = useAuth();
-  const { toast } = useToast();
-  const [userData, setUserData] = useState<UserData>(initialUserData);
-
-  const { totalDeposit, autoCompounding, earningsBalance, username } = userData;
+  const router = useRouter();
   
+  const totalDeposit = userData?.totalDeposit ?? 0;
+  const autoCompounding = userData?.autoCompounding ?? false;
+  const earningsBalance = userData?.earningsBalance ?? 0;
+
+  const [earnings, setEarnings] = useState(earningsBalance);
   const [apy, setApy] = useState(0);
 
   const currentTierName = getTierFromDeposit(totalDeposit);
   const currentTier = tiers.find(tier => tier.name === currentTierName);
 
   useEffect(() => {
-    if (!username) return;
-    const unsub = onSnapshot(doc(db, "users", username), (doc) => {
-      if (doc.exists()) {
-        setUserData(doc.data() as UserData);
-      }
-    });
-    return () => unsub();
-  }, [username]);
+    setEarnings(earningsBalance);
 
-  useEffect(() => {
     if (!currentTier || currentTier.name === 'Observer') {
       setApy(0);
       return;
     }
 
     const dailyRate = currentTier.dailyReturn ?? 0;
-    const compoundedApy = Math.pow(1 + dailyRate, 365) - 1;
-    setApy(compoundedApy * 100);
+    const annualRate = Math.pow(1 + dailyRate, 365) - 1;
+    setApy(annualRate * 100);
 
-  }, [currentTier]);
+    const interval = setInterval(() => {
+      setEarnings((prev) => {
+        if (autoCompounding) {
+          const newTotal = totalDeposit + prev;
+          return prev + newTotal * dailyRate / (24 * 60 * 60 / 2);
+        } else {
+          return prev + totalDeposit * dailyRate / (24 * 60 * 60 / 2);
+        }
+      });
+    }, 2000);
 
-  const handleAutoCompoundingToggle = async (checked: boolean) => {
-    if (!username) return;
-    const userRef = doc(db, "users", username);
-    try {
-      await updateDoc(userRef, { autoCompounding: checked });
-      toast({
-        title: "Settings Updated",
-        description: `Auto-compounding has been ${checked ? 'enabled' : 'disabled'}.`
-      });
-    } catch (error) {
-      console.error("Failed to update auto-compounding", error);
-      toast({
-        variant: 'destructive',
-        title: "Update Failed",
-        description: "Could not update your settings. Please try again."
-      });
-    }
-  }
-  
+    return () => clearInterval(interval);
+  }, [userData, currentTier, totalDeposit, autoCompounding, earningsBalance]);
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-      <div className="lg:col-span-2 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold font-headline">Welcome, {username}</h1>
-          <p className="text-muted-foreground">Here is your financial overview for today.</p>
-        </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <main className="container mx-auto py-8 px-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-8">
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>Account Overview</CardTitle>
+                <CardDescription>
+                  Welcome back, {user?.displayName || user?.email}!
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                <div>
+                  <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
+                    <Gem className="w-4 h-4 mr-2" />
+                    Investment Package
+                  </CardTitle>
+                  <p className="text-xl font-bold">{currentTierName}</p>
+                </div>
+                <div>
+                  <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
+                    <Zap className="w-4 h-4 mr-2" />
+                    Auto-Compounding
+                  </CardTitle>
+                  <p className="text-xl font-bold">
+                    {autoCompounding ? "Active" : "Inactive"}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Principal</CardTitle>
-              <Banknote className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalDeposit)}</div>
-              <p className="text-xs text-muted-foreground">Your initial investment</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Earnings</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(earningsBalance)}</div>
-              <p className="text-xs text-muted-foreground">Profits generated</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-              <Gem className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(totalDeposit + earningsBalance)}</div>
-              <p className="text-xs text-muted-foreground">Principal + Earnings</p>
-            </CardContent>
-          </Card>
-        </div>
+            <DepositCard />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance</CardTitle>
-            <CardDescription>
-              Your estimated annual yield based on your current tier.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between mb-2">
-              <p className="font-medium">Annual Percentage Yield (APY)</p>
-              <p className="font-bold text-primary">{apy.toFixed(2)}%</p>
-            </div>
-            <Progress value={apy} className="w-full" />
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Based on your {currentTierName} tier at{" "}
-              {currentTier?.dailyReturn
-                ? (currentTier.dailyReturn * 100).toFixed(2)
-                : 0}% daily return.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>Live Market Data</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="flex items-center">
+                  <TrendingUp className="w-8 h-8 text-primary" />
+                  <div className="ml-4">
+                    <p className="text-2xl font-bold">
+                      Br {earnings.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Live Earnings Balance
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Banknote className="w-8 h-8 text-primary" />
+                  <div className="ml-4">
+                    <p className="text-2xl font-bold">
+                      Br {totalDeposit.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Total Principal</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-      <div className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Account Settings</CardTitle>
-            <CardDescription>Manage your investment preferences.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <p className="font-semibold">Auto-Compounding</p>
-                <p className="text-sm text-muted-foreground">
-                  Reinvest earnings for exponential growth.
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>APY Meter</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium">Annual Percentage Yield (APY)</p>
+                  <p className="font-bold text-primary">{apy.toFixed(2)}%</p>
+                </div>
+                <Progress value={apy} className="w-full" />
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  Based on your {currentTierName} package at{" "}
+                  {currentTier?.dailyReturn
+                    ? (currentTier.dailyReturn * 100).toFixed(2)
+                    : 0}% daily return.
                 </p>
-              </div>
-              <Switch
-                checked={autoCompounding}
-                onCheckedChange={handleAutoCompoundingToggle}
-              />
-            </div>
-            <div className="flex items-center justify-between rounded-lg border p-4">
-              <div>
-                <p className="font-semibold">Membership Tier</p>
-                <p className="text-sm text-muted-foreground">
-                  Your current investment level.
-                </p>
-              </div>
-              <div className="font-bold text-primary">{currentTierName}</div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="space-y-8">
+            <ReferralProgramCard />
+            
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>All Investment Packages</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-4">
+                   <li className="grid grid-cols-3 items-center text-sm font-semibold">
+                      <span className="text-muted-foreground col-span-1">Package</span>
+                      <span className="text-muted-foreground text-right col-span-1">Daily Return</span>
+                      <span className="text-muted-foreground text-right col-span-1">Price</span>
+                  </li>
+                  {tiers
+                    .filter((tier) => tier.name !== 'Observer')
+                    .map((tier) => (
+                      <li key={tier.name} className="grid grid-cols-3 items-center text-sm border-t pt-2">
+                        <span className="text-muted-foreground col-span-1">{tier.name}</span>
+                        <span className="font-semibold text-right col-span-1 text-primary">
+                          {(tier.dailyReturn * 100).toFixed(1)}%
+                        </span>
+                        <span className="font-semibold text-right col-span-1">
+                          Br {tier.minDeposit.toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle>Actions</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-card-alt">
+                  <div>
+                    <p className="font-semibold">Auto-Compounding</p>
+                    <p className="text-sm text-muted-foreground">
+                      Reinvest earnings for exponential growth.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={autoCompounding}
+                    // onCheckedChange={handleAutoCompoundingToggle}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

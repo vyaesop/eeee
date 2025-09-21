@@ -1,17 +1,9 @@
+'use client';
 
-"use client";
-
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
-
+import { useForm } from "react-hook-form";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -20,142 +12,132 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { ShieldCheck } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
+import Link from "next/link";
+import { Gem } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
+import { useState } from "react";
 
 const formSchema = z.object({
-  username: z.string().min(1, "Username is required."),
-  password: z.string().optional(), // In a real app, you'd validate this
+  email: z.string().email("Invalid email address"),
+  password: z.string(),
 });
 
-const ADMIN_USERNAME = "admin";
-const ADMIN_PASSWORD = "ADMIN2024";
+const passwordResetSchema = z.object({
+  resetEmail: z.string().email("Invalid email address"),
+});
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
+  const { signIn, sendPasswordReset } = useAuth();
+  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
 
+  const resetForm = useForm<z.infer<typeof passwordResetSchema>>({
+    resolver: zodResolver(passwordResetSchema),
+    defaultValues: {
+      resetEmail: "",
+    },
+  });
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
+    await signIn(values.email, values.password);
+  }
 
-    // Admin login check
-    if (values.username === ADMIN_USERNAME && values.password === ADMIN_PASSWORD) {
-      if (typeof window !== "undefined") {
-        sessionStorage.setItem("apexvest_user", values.username);
-      }
-      toast({ title: "Login Successful", description: "Welcome back, Admin!" });
-      router.push("/dashboard/admin");
-      setIsLoading(false);
-      return;
-    }
-
-    // Regular user login check
-    try {
-      const userRef = doc(db, "users", values.username);
-      const userSnap = await getDoc(userRef);
-
-      if (userSnap.exists()) {
-        // In a real app, you'd check a password here.
-        // For this demo, we'll just log them in if the user exists.
-        toast({ title: "Login Successful", description: `Welcome back, ${values.username}!` });
-        if (typeof window !== "undefined") {
-          sessionStorage.setItem("apexvest_user", values.username);
-        }
-        router.push("/dashboard");
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Login Failed",
-          description: "User not found. If you're new, please join first.",
-        });
-      }
-    } catch (error) {
-      console.error("Firestore operation failed:", error);
-      toast({ variant: "destructive", title: "Login Failed", description: "Could not connect to the database." });
-    } finally {
-      setIsLoading(false);
-    }
+  async function handlePasswordReset(values: z.infer<typeof passwordResetSchema>) {
+    await sendPasswordReset(values.resetEmail);
+    setResetDialogOpen(false);
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      <div className="flex flex-col items-center text-center mb-8">
-        <ShieldCheck className="w-16 h-16 text-primary mb-4" />
-        <h1 className="text-5xl font-headline font-bold text-primary">
-          ApexVest
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Exclusive Access to Premier Financial Opportunities
+    <div className="flex items-center justify-center min-h-screen bg-background">
+      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
+        <div className="text-center">
+          <Gem className="mx-auto h-12 w-12 text-primary" />
+          <h1 className="text-3xl font-bold mt-4 font-headline">Welcome to ApexVest</h1>
+          <p className="text-muted-foreground">Securely log in to your account</p>
+        </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input placeholder="your@email.com" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Password</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder="********" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Button type="submit" className="w-full">Sign In</Button>
+          </form>
+        </Form>
+        <p className="text-center text-sm text-muted-foreground">
+          Don't have an account?{" "}
+          <Link href="/register" className="underline">
+            Sign Up
+          </Link>
         </p>
+        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
+          <DialogTrigger asChild>
+            <Button variant="link" className="w-full">Forgot Password?</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Your Password</DialogTitle>
+              <DialogDescription>
+                Enter your email address and we'll send you a link to reset your password.
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...resetForm}>
+              <form onSubmit={resetForm.handleSubmit(handlePasswordReset)} className="space-y-4 py-4">
+                <FormField
+                  control={resetForm.control}
+                  name="resetEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="your@email.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <DialogFooter>
+                  <DialogClose asChild>
+                    <Button type="button" variant="secondary">Cancel</Button>
+                  </DialogClose>
+                  <Button type="submit">Send Reset Link</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
-      <Card className="w-full max-w-sm shadow-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl font-headline">Member Login</CardTitle>
-          <CardDescription>Enter your credentials to access the dashboard.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="username"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Username</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. janesmith" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Password</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter your password" type="password" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Authenticating..." : "Secure Login"}
-              </Button>
-            </form>
-          </Form>
-          <div className="mt-6 text-center text-sm">
-            <p className="text-muted-foreground">New to ApexVest?</p>
-            <Link
-              href="/join"
-              className="font-medium text-primary hover:underline"
-            >
-              Join the club
-            </Link>
-          </div>
-           <div className="mt-4 text-center text-sm">
-             <Link
-              href="/membership"
-              className="text-xs text-muted-foreground hover:underline"
-            >
-              Learn about membership benefits
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
-    </main>
+    </div>
   );
 }

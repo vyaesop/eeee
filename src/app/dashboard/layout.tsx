@@ -99,13 +99,7 @@ export default function DashboardLayout({
               <ShieldCheck className="h-6 w-6" />
               <span className="font-headline">ApexVest</span>
             </Link>
-            <Link
-              href="/dashboard"
-              className="text-foreground transition-colors hover:text-foreground"
-            >
-              <LayoutDashboard className="h-5 w-5 inline-block mr-2" />
-              Dashboard
-            </Link>
+            
             {isAdmin && (
               <Link
                 href="/dashboard/admin"

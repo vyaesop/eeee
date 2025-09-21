@@ -1,58 +1,92 @@
-export type Tier = {
-  name: string;
-  minDeposit: number;
-  maxDeposit: number;
-  dailyReturn: number;
-  apy: number;
-  color: string;
-};
 
-export const TIERS: Record<string, Tier> = {
-  OBSERVER: {
-    name: 'Observer',
+export const tiers = [
+  {
+    name: "Observer",
     minDeposit: 0,
     maxDeposit: 0,
     dailyReturn: 0,
+    color: "#9ca3af",
     apy: 0,
-    color: '#9ca3af', // gray-400
   },
-  SILVER: {
-    name: 'Silver',
-    minDeposit: 1,
-    maxDeposit: 9999,
-    dailyReturn: 0.002,
-    apy: Math.pow(1 + 0.002, 365) - 1,
-    color: '#c0c0c0', // silver
+  {
+    name: "Gold assets 1",
+    minDeposit: 800,
+    maxDeposit: 800,
+    dailyReturn: 0.04,
+    color: "#fde047",
+    apy: Math.pow(1 + 0.04, 365) - 1,
   },
-  GOLD: {
-    name: 'Gold',
-    minDeposit: 10000,
-    maxDeposit: 49999,
-    dailyReturn: 0.0025,
-    apy: Math.pow(1 + 0.0025, 365) - 1,
-    color: '#ffd700', // gold
+  {
+    name: "Oil assets 1",
+    minDeposit: 1200,
+    maxDeposit: 1200,
+    dailyReturn: 0.04,
+    color: "#a16207",
+    apy: Math.pow(1 + 0.04, 365) - 1,
   },
-  PLATINUM: {
-    name: 'Platinum',
-    minDeposit: 50000,
-    maxDeposit: Infinity,
-    dailyReturn: 0.003,
-    apy: Math.pow(1 + 0.003, 365) - 1,
-    color: '#e5e4e2', // platinum
+  {
+    name: "Real estate assets 1",
+    minDeposit: 1500,
+    maxDeposit: 1500,
+    dailyReturn: 0.04,
+    color: "#f97316",
+    apy: Math.pow(1 + 0.04, 365) - 1,
   },
-};
+  {
+    name: "Total assets 1",
+    minDeposit: 2700,
+    maxDeposit: 2700,
+    dailyReturn: 0.04,
+    color: "#ea580c",
+    apy: Math.pow(1 + 0.04, 365) - 1,
+  },
+  {
+    name: "Gold asset 2",
+    minDeposit: 3000,
+    maxDeposit: 3000,
+    dailyReturn: 0.045,
+    color: "#facc15",
+    apy: Math.pow(1 + 0.045, 365) - 1,
+  },
+  {
+    name: "Oil asset 2",
+    minDeposit: 3200,
+    maxDeposit: 3200,
+    dailyReturn: 0.045,
+    color: "#854d0e",
+    apy: Math.pow(1 + 0.045, 365) - 1,
+  },
+  {
+    name: "Real estate asset 2",
+    minDeposit: 4000,
+    maxDeposit: 4000,
+    dailyReturn: 0.045,
+    color: "#d97706",
+    apy: Math.pow(1 + 0.045, 365) - 1,
+  },
+  {
+    name: "Total assets 2",
+    minDeposit: 5600,
+    maxDeposit: 5600,
+    dailyReturn: 0.05,
+    color: "#b45309",
+    apy: Math.pow(1 + 0.05, 365) - 1,
+  },
+  {
+    name: "All invest",
+    minDeposit: 12000,
+    maxDeposit: 12000,
+    dailyReturn: 0.05,
+    color: "#78350f",
+    apy: Math.pow(1 + 0.05, 365) - 1,
+  },
+];
 
-export const tiers = Object.values(TIERS);
-
-export const getTierFromDeposit = (deposit: number): string => {
-  if (deposit >= TIERS.PLATINUM.minDeposit) {
-    return TIERS.PLATINUM.name;
-  }
-  if (deposit >= TIERS.GOLD.minDeposit) {
-    return TIERS.GOLD.name;
-  }
-  if (deposit >= TIERS.SILVER.minDeposit) {
-    return TIERS.SILVER.name;
-  }
-  return TIERS.OBSERVER.name;
-};
+export function getTierFromDeposit(deposit: number) {
+  if (deposit === 0) return "Observer";
+  // Find the closest matching tier for a given deposit, in case of discrepancies.
+  const closestTier = tiers.reduce((prev, curr) => {
+    return (Math.abs(curr.minDeposit - deposit) < Math.abs(prev.minDeposit - deposit) ? curr : prev);
+  });
+  return closestTier.name;
+}

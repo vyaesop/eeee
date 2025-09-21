@@ -1,96 +1,85 @@
-"use client";
+'use client';
 
-import { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAuth } from "@/hooks/use-auth";
+import { useEffect, useState } from "react";
+import { collection, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Check, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Copy, Gift } from "lucide-react";
-import { formatCurrency } from '@/lib/utils';
 
-type Referral = {
-    name: string;
-    deposit: number;
+interface Referral {
+  id: string;
+  deposit: number;
 }
 
-type ReferralCardProps = {
-  username: string;
-  referrals: Referral[];
-};
-
-export default function ReferralCard({ username, referrals }: ReferralCardProps) {
+export const ReferralProgramCard = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [referralLink, setReferralLink] = useState('');
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+  const [copied, setCopied] = useState(false);
+  const [referralLink, setReferralLink] = useState("");
 
-  useState(() => {
-    if (typeof window !== 'undefined') {
-        const link = `${window.location.origin}/join?ref=${username}`;
-        setReferralLink(link);
+  useEffect(() => {
+    if (user && user.displayName) {
+      setReferralLink(`${window.location.origin}/register?ref=${user.displayName}`);
     }
-  });
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !user.displayName) return;
+
+    const referralsCol = collection(db, "users", user.displayName, "referrals");
+    const unsubscribe = onSnapshot(referralsCol, (snapshot) => {
+      const fetchedReferrals = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Referral[];
+      setReferrals(fetchedReferrals);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(referralLink);
-    toast({
-      title: "Copied to clipboard!",
-      description: "Your referral link is ready to be shared.",
-    });
+    toast({ title: "Copied!", description: "Referral link copied to clipboard." });
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <Card>
+    <Card className="shadow-lg">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-            <Gift className="h-5 w-5" />
-            Referral Program
-        </CardTitle>
-        <CardDescription>
-            Earn a 5% bonus on the initial deposit of every member you refer.
-        </CardDescription>
+        <CardTitle>Referral Program</CardTitle>
+        <CardDescription>Earn a 5% bonus on the first deposit of users you refer.</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex w-full items-center space-x-2 mb-6">
-          <Input value={referralLink} readOnly />
-          <Button type="button" size="icon" onClick={handleCopy}>
-            <Copy className="h-4 w-4" />
-          </Button>
+        <div className="mb-4">
+          <p className="text-sm font-semibold mb-2">Your Unique Referral Link</p>
+          <div className="flex items-center gap-2">
+             <div className="flex-grow p-2 bg-muted rounded-md text-sm font-mono select-all overflow-x-auto">
+               {referralLink}
+             </div>
+             <Button onClick={handleCopy} size="icon" variant="ghost">
+               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+             </Button>
+           </div>
         </div>
-        <h4 className="font-semibold mb-2 text-sm">Your Referrals</h4>
-        <div className="rounded-md border">
-            <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead className="text-right">Deposit</TableHead>
-                    <TableHead className="text-right">Your Bonus</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {referrals.map((ref, i) => (
-                        <TableRow key={i}>
-                            <TableCell className="font-medium">{ref.name}</TableCell>
-                            <TableCell className="text-right">{formatCurrency(ref.deposit)}</TableCell>
-                            <TableCell className="text-right text-accent font-medium">{formatCurrency(ref.deposit * 0.05)}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-            </Table>
+        <div>
+          <p className="text-sm font-semibold">Your Referrals</p>
+          {referrals.length > 0 ? (
+            <ul className="mt-1 space-y-2">
+              {referrals.map(r => (
+                <li key={r.id} className="flex justify-between items-center text-sm p-2 bg-muted/50 rounded-md">
+                  <span>{r.id}</span>
+                  <span className="font-semibold">Br {r.deposit.toLocaleString()}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-muted-foreground mt-1">You have no referrals yet.</p>
+          )}
         </div>
       </CardContent>
     </Card>
   );
-}
+};
