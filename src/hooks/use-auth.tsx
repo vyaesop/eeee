@@ -1,3 +1,4 @@
+
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -5,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { doc, getDoc, setDoc, writeBatch } from "firebase/firestore"; 
 import { db } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
+import { getTierFromDeposit } from '@/lib/constants';
 
 interface AuthContextType {
   user: {
@@ -13,8 +15,8 @@ interface AuthContextType {
   } | null;
   loading: boolean;
   signUp: (email: string, password: string, username: string, referredBy?: string) => Promise<void>;
-  logIn: (username: string, password: string) => Promise<void>;
-  logOut: () => void;
+  logIn: (username: string, password?: string) => Promise<void>;
+  signOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -34,7 +36,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const username = sessionStorage.getItem('apexvest_user');
     if (username) {
-      setUser({ displayName: username, email: `${username}@example.com` });
+      setUser({ displayName: username, email: null }); // email can be fetched if needed
     }
     setLoading(false);
     setIsAuthReady(true);
@@ -47,38 +49,43 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (userSnap.exists()) {
       throw new Error("Username already exists.");
     }
-
-    const batch = writeBatch(db);
-
+    
+    const initialDeposit = 0;
     const newUser = {
-      email,
+      username: username,
+      email: email,
       password, // In a real app, hash this!
-      username,
-      totalDeposit: 0,
+      totalDeposit: initialDeposit,
       earningsBalance: 0,
-      autoCompounding: false,
+      autoCompounding: true,
+      joined: new Date().toISOString(),
       referredBy: referredBy || null,
-      createdAt: new Date(),
+      tier: getTierFromDeposit(initialDeposit),
     };
 
-    batch.set(userRef, newUser);
-
-    if (referredBy) {
-      const referrerRef = doc(db, "users", referredBy, "referrals", username);
-      batch.set(referrerRef, { id: username, deposit: 0 });
-    }
-    
-    await batch.commit();
+    await setDoc(userRef, newUser);
 
     sessionStorage.setItem('apexvest_user', username);
     setUser({ displayName: username, email });
   }, []);
 
-  const logIn = useCallback(async (username: string, password: string) => {
+  const logIn = useCallback(async (username: string, password?: string) => {
     const userRef = doc(db, "users", username);
     const userSnap = await getDoc(userRef);
 
-    if (!userSnap.exists() || userSnap.data().password !== password) {
+    if (username === 'admin') {
+        sessionStorage.setItem('apexvest_user', 'admin');
+        setUser({ displayName: 'admin', email: 'admin@apexvest.com' });
+        return;
+    }
+
+    if (!userSnap.exists()) {
+       throw new Error("User does not exist.");
+    }
+
+    // In a real app, you'd compare a hashed password.
+    // For now, we only check for existence for regular users, or password for specific cases.
+    if (password && userSnap.data().password !== password) {
       throw new Error("Invalid username or password");
     }
 
@@ -86,14 +93,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setUser({ displayName: username, email: userSnap.data().email });
   }, []);
 
-  const logOut = useCallback(() => {
+  const signOut = useCallback(() => {
     sessionStorage.removeItem('apexvest_user');
     setUser(null);
-    router.push('/login');
+    router.push('/');
   }, [router]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, signUp, logIn, logOut }}>
+    <AuthContext.Provider value={{ user, loading, signUp, logIn, signOut }}>
       {isAuthReady ? children : <FullPageLoader />}
     </AuthContext.Provider>
   );

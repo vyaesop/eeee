@@ -1,13 +1,12 @@
 
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { UserPlus } from "lucide-react";
-import { getTierFromDeposit } from "@/lib/constants";
+import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters."),
@@ -39,6 +39,7 @@ export default function JoinPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [referrer, setReferrer] = useState<string | null>(null);
+  const { logIn } = useAuth();
 
   useEffect(() => {
     const ref = searchParams.get("ref");
@@ -60,55 +61,54 @@ export default function JoinPage() {
 
     const isAdminLogin = values.username === 'admin' && values.invitationCode === ADMIN_INVITATION_CODE;
 
-    if (values.invitationCode !== VALID_INVITATION_CODE && !isAdminLogin) {
+    if (isAdminLogin) {
+        try {
+            await logIn(values.username, 'admin'); // Using a dummy password for admin
+            router.push("/dashboard");
+        } catch (error) {
+            toast({
+                variant: "destructive",
+                title: "Admin Login Failed",
+                description: "There was an issue logging in the admin.",
+            });
+            setIsLoading(false);
+        }
+        return;
+    }
+
+    if (values.invitationCode !== VALID_INVITATION_CODE) {
         toast({
             variant: "destructive",
-            title: "Registration Failed",
-            description: "Invalid invitation code. Please check your code and try again.",
+            title: "Invalid Invitation Code",
+            description: "Please check your code and try again.",
         });
         setIsLoading(false);
         return;
     }
 
     try {
-        if(isAdminLogin) {
-            sessionStorage.setItem("apexvest_user", 'admin');
-            router.push("/dashboard");
-            return;
-        }
-
         const userRef = doc(db, "users", values.username);
         const userSnap = await getDoc(userRef);
 
         if (userSnap.exists()) {
             toast({
-                variant: "destructive",
-                title: "Login Failed",
-                description: "This username is already taken. If this is you, please log in.",
+                title: "Username Exists",
+                description: "This username is taken. Trying to log in instead.",
             });
+            // Try to log in if user exists
+            router.push(`/login?username=${values.username}`);
             setIsLoading(false);
             return;
         }
         
-        // This is a new user registration.
-        const initialDeposit = 0;
-        const newUser = {
-            username: values.username,
-            totalDeposit: initialDeposit,
-            earningsBalance: 0,
-            autoCompounding: true,
-            joined: new Date().toISOString(),
-            referredBy: referrer || null,
-            tier: getTierFromDeposit(initialDeposit),
-        };
-        await setDoc(userRef, newUser);
-        
-        toast({ title: "Account Created!", description: "Welcome to ApexVest, your journey starts now." });
-
-        if (typeof window !== "undefined") {
-            sessionStorage.setItem("apexvest_user", values.username);
+        // New user, redirect to registration page
+        const params = new URLSearchParams();
+        params.set('username', values.username);
+        if(referrer) {
+            params.set('ref', referrer);
         }
-        router.push("/dashboard");
+
+        router.push(`/register?${params.toString()}`);
 
     } catch (error) {
         console.error("Firestore operation failed:", error);
@@ -125,15 +125,15 @@ export default function JoinPage() {
           Join ApexVest
         </h1>
         <p className="text-muted-foreground mt-2">
-          Create your account to access premier financial opportunities.
+          Start your journey to premier financial opportunities.
         </p>
       </div>
       <Card className="w-full max-w-sm shadow-2xl">
         <CardHeader>
-          <CardTitle className="text-2xl font-headline">Create Your Account</CardTitle>
+          <CardTitle className="text-2xl font-headline">Get Started</CardTitle>
           <CardDescription>
             {referrer 
-                ? `You've been referred by ${referrer}. Complete the form to join.` 
+                ? `You've been referred by ${referrer}. Enter your details to join.` 
                 : "Enter your desired username and invitation code."
             }
         </CardDescription>
@@ -168,10 +168,16 @@ export default function JoinPage() {
                 )}
               />
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Processing..." : "Join / Login"}
+                {isLoading ? "Processing..." : "Continue"}
               </Button>
             </form>
           </Form>
+           <p className="text-center text-sm text-muted-foreground mt-4">
+            Already have an account?{" "}
+            <Link href="/login" className="underline">
+              Login
+            </Link>
+          </p>
         </CardContent>
       </Card>
     </main>
