@@ -27,7 +27,7 @@ export const Header = () => {
     <header className="bg-card text-foreground shadow-md">
       <div className="container mx-auto flex h-20 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <EIGLogo className="h-12 w-24" />
+          <EIGLogo className="h-24 w-24" />
           <span className="font-headline text-lg hidden sm:inline">Ethiopian Investment Group</span>
         </Link>
 

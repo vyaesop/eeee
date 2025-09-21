@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { UserPlus } from "lucide-react";
+import { UserPlus, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 
@@ -39,7 +39,13 @@ export default function JoinPage() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [referrer, setReferrer] = useState<string | null>(null);
-  const { logIn } = useAuth();
+  const { logIn, user, loading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      router.push("/dashboard");
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     const ref = searchParams.get("ref");
@@ -117,6 +123,14 @@ export default function JoinPage() {
     }
   }
 
+  if (authLoading || user) {
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+      </main>
+    );
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="flex flex-col items-center text-center mb-8">
@@ -148,7 +162,7 @@ export default function JoinPage() {
                   <FormItem>
                     <FormLabel>Username</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. janesmith" {...field} />
+                      <Input placeholder="e.g. Abebe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

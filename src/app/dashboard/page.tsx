@@ -22,7 +22,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-center">
         <Card className="w-full max-w-lg text-center">
             <CardHeader>
-              <CardTitle className="text-3xl font-headline">Welcome, Observer!</CardTitle>
+              <CardTitle className="text-3xl font-headline">Welcome!</CardTitle>
               <CardDescription>
                 Your journey to financial growth starts here. Select a membership plan to begin earning.
               </CardDescription>
