@@ -121,14 +121,14 @@ export default function JoinPage() {
     <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
       <div className="flex flex-col items-center text-center mb-8">
         <UserPlus className="w-16 h-16 text-primary mb-4" />
-        <h1 className="text-5xl font-headline font-bold text-primary">
+        <h1 className="text-5xl font-headline font-bold text-foreground">
           Join Ethiopian Investment Group
         </h1>
         <p className="text-muted-foreground mt-2">
           Start your journey to premier financial opportunities.
         </p>
       </div>
-      <Card className="w-full max-w-sm shadow-2xl">
+      <Card className="w-full max-w-sm shadow-2xl bg-card">
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Get Started</CardTitle>
           <CardDescription>
@@ -174,7 +174,7 @@ export default function JoinPage() {
           </Form>
            <p className="text-center text-sm text-muted-foreground mt-4">
             Already have an account?{" "}
-            <Link href="/login" className="underline">
+            <Link href="/login" className="underline hover:text-primary">
               Login
             </Link>
           </p>

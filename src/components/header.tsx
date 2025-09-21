@@ -24,11 +24,11 @@ export const Header = () => {
   };
 
   return (
-    <header className="bg-background text-foreground shadow-md">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
+    <header className="bg-card text-foreground shadow-md">
+      <div className="container mx-auto flex h-20 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2 font-bold text-xl">
-          <EIGLogo className="h-8 w-8" />
-          <span className="font-headline">Ethiopian Investment Group</span>
+          <EIGLogo className="h-12 w-24" />
+          <span className="font-headline text-lg hidden sm:inline">Ethiopian Investment Group</span>
         </Link>
 
         {/* Desktop Navigation */}
@@ -48,8 +48,8 @@ export const Header = () => {
             </>
           ) : (
             <>
-              <Button onClick={() => router.push('/')} variant="secondary">Login</Button>
-              <Button onClick={() => router.push('/register')}>Sign Up</Button>
+              <Button onClick={() => router.push('/login')} variant="secondary">Login</Button>
+              <Button onClick={() => router.push('/')}>Sign Up</Button>
             </>
           )}
         </div>
@@ -78,8 +78,8 @@ export const Header = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <Button onClick={() => router.push('/')} variant="secondary" className="w-full">Login</Button>
-                  <Button onClick={() => router.push('/register')} className="w-full">Sign Up</Button>
+                  <Button onClick={() => router.push('/login')} variant="secondary" className="w-full">Login</Button>
+                  <Button onClick={() => router.push('/')} className="w-full">Sign Up</Button>
                 </div>
               )}
             </div>

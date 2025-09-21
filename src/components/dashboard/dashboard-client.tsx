@@ -96,7 +96,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
       <main className="container mx-auto py-8 px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2 space-y-8">
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-card">
               <CardHeader>
                 <CardTitle>Account Overview</CardTitle>
                 <CardDescription>
@@ -105,15 +105,14 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               </CardHeader>
               <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
-                  <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
-                    <EIGLogo className="w-6 h-6 mr-2" />
+                  <CardTitle className="flex items-center justify-center text-sm font-medium text-muted-foreground mb-1">
                     Investment Package
                   </CardTitle>
-                  <p className="text-xl font-bold">{currentTierName}</p>
+                  <p className="text-xl font-bold text-secondary">{currentTierName}</p>
                 </div>
                 <div>
-                  <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
-                    <Zap className="w-4 h-4 mr-2" />
+                  <CardTitle className="flex items-center justify-center text-sm font-medium text-muted-foreground mb-1">
+                     <Zap className="w-4 h-4 mr-2" />
                     Auto-Compounding
                   </CardTitle>
                   <p className="text-xl font-bold">
@@ -125,7 +124,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
 
             <DepositCard onDeposit={fetchUserData} />
 
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-card">
               <CardHeader>
                 <CardTitle>Live Market Data</CardTitle>
               </CardHeader>
@@ -153,7 +152,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-card">
               <CardHeader>
                 <CardTitle>APY Meter</CardTitle>
               </CardHeader>
@@ -176,7 +175,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
           <div className="space-y-8">
             <ReferralProgramCard />
             
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-card">
               <CardHeader>
                 <CardTitle>All Investment Packages</CardTitle>
               </CardHeader>
@@ -204,12 +203,12 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg">
+            <Card className="shadow-lg bg-card">
               <CardHeader>
                 <CardTitle>Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-4 rounded-lg bg-card-alt">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                   <div>
                     <p className="font-semibold">Auto-Compounding</p>
                     <p className="text-sm text-muted-foreground">
