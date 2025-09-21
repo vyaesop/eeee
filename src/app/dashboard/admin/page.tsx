@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from "@/components/ui/chart"
-import { ShieldCheck, Users, DollarSign, Activity, MoreHorizontal, Loader2 } from "lucide-react";
+import { Users, DollarSign, Activity, MoreHorizontal, Loader2, Shield } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { tiers } from "@/lib/constants";
 import { db } from "@/lib/firebase";
@@ -135,7 +135,7 @@ export default function AdminPage() {
                  <Card className="bg-primary text-primary-foreground">
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                         <CardTitle className="text-sm font-medium">System Status</CardTitle>
-                         <ShieldCheck className="h-4 w-4 text-primary-foreground" />
+                         <Shield className="h-4 w-4 text-primary-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">All Systems Normal</div>

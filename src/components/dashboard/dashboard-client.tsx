@@ -106,7 +106,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                 <div>
                   <CardTitle className="flex items-center text-sm font-medium text-muted-foreground">
-                    <EIGLogo className="w-4 h-4 mr-2" />
+                    <EIGLogo className="w-6 h-6 mr-2" />
                     Investment Package
                   </CardTitle>
                   <p className="text-xl font-bold">{currentTierName}</p>
