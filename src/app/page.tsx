@@ -1,9 +1,17 @@
-'use client';
 
-import { zodResolver } from "@hookform/resolvers/zod";
+"use client";
+
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -12,132 +20,160 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { useAuth } from "@/hooks/use-auth";
-import Link from "next/link";
-import { Gem } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
-import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { UserPlus } from "lucide-react";
+import { getTierFromDeposit } from "@/lib/constants";
 
 const formSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string(),
+  username: z.string().min(3, "Username must be at least 3 characters."),
+  invitationCode: z.string().min(1, "Invitation code is required."),
 });
 
-const passwordResetSchema = z.object({
-  resetEmail: z.string().email("Invalid email address"),
-});
+const VALID_INVITATION_CODE = "APEX2024";
+const ADMIN_INVITATION_CODE = "ADMIN2024";
 
-export default function LoginPage() {
-  const { signIn, sendPasswordReset } = useAuth();
-  const [isResetDialogOpen, setResetDialogOpen] = useState(false);
+export default function JoinPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [referrer, setReferrer] = useState<string | null>(null);
+
+  useEffect(() => {
+    const ref = searchParams.get("ref");
+    if (ref) {
+      setReferrer(ref);
+    }
+  }, [searchParams]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const resetForm = useForm<z.infer<typeof passwordResetSchema>>({
-    resolver: zodResolver(passwordResetSchema),
-    defaultValues: {
-      resetEmail: "",
+      username: "",
+      invitationCode: "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    await signIn(values.email, values.password);
-  }
+    setIsLoading(true);
 
-  async function handlePasswordReset(values: z.infer<typeof passwordResetSchema>) {
-    await sendPasswordReset(values.resetEmail);
-    setResetDialogOpen(false);
+    const isAdminLogin = values.username === 'admin' && values.invitationCode === ADMIN_INVITATION_CODE;
+
+    if (values.invitationCode !== VALID_INVITATION_CODE && !isAdminLogin) {
+        toast({
+            variant: "destructive",
+            title: "Registration Failed",
+            description: "Invalid invitation code. Please check your code and try again.",
+        });
+        setIsLoading(false);
+        return;
+    }
+
+    try {
+        if(isAdminLogin) {
+            sessionStorage.setItem("apexvest_user", 'admin');
+            router.push("/dashboard");
+            return;
+        }
+
+        const userRef = doc(db, "users", values.username);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+            toast({
+                variant: "destructive",
+                title: "Login Failed",
+                description: "This username is already taken. If this is you, please log in.",
+            });
+            setIsLoading(false);
+            return;
+        }
+        
+        // This is a new user registration.
+        const initialDeposit = 0;
+        const newUser = {
+            username: values.username,
+            totalDeposit: initialDeposit,
+            earningsBalance: 0,
+            autoCompounding: true,
+            joined: new Date().toISOString(),
+            referredBy: referrer || null,
+            tier: getTierFromDeposit(initialDeposit),
+        };
+        await setDoc(userRef, newUser);
+        
+        toast({ title: "Account Created!", description: "Welcome to ApexVest, your journey starts now." });
+
+        if (typeof window !== "undefined") {
+            sessionStorage.setItem("apexvest_user", values.username);
+        }
+        router.push("/dashboard");
+
+    } catch (error) {
+        console.error("Firestore operation failed:", error);
+        toast({ variant: "destructive", title: "Operation Failed", description: "Could not connect to the database." });
+        setIsLoading(false);
+    }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md p-8 space-y-8 bg-card rounded-lg shadow-lg">
-        <div className="text-center">
-          <Gem className="mx-auto h-12 w-12 text-primary" />
-          <h1 className="text-3xl font-bold mt-4 font-headline">Welcome to ApexVest</h1>
-          <p className="text-muted-foreground">Securely log in to your account</p>
-        </div>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="your@email.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <FormControl>
-                    <Input type="password" placeholder="********" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <Button type="submit" className="w-full">Sign In</Button>
-          </form>
-        </Form>
-        <p className="text-center text-sm text-muted-foreground">
-          Don't have an account?{" "}
-          <Link href="/register" className="underline">
-            Sign Up
-          </Link>
+    <main className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
+      <div className="flex flex-col items-center text-center mb-8">
+        <UserPlus className="w-16 h-16 text-primary mb-4" />
+        <h1 className="text-5xl font-headline font-bold text-primary">
+          Join ApexVest
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Create your account to access premier financial opportunities.
         </p>
-        <Dialog open={isResetDialogOpen} onOpenChange={setResetDialogOpen}>
-          <DialogTrigger asChild>
-            <Button variant="link" className="w-full">Forgot Password?</Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reset Your Password</DialogTitle>
-              <DialogDescription>
-                Enter your email address and we'll send you a link to reset your password.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...resetForm}>
-              <form onSubmit={resetForm.handleSubmit(handlePasswordReset)} className="space-y-4 py-4">
-                <FormField
-                  control={resetForm.control}
-                  name="resetEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="your@email.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <DialogFooter>
-                  <DialogClose asChild>
-                    <Button type="button" variant="secondary">Cancel</Button>
-                  </DialogClose>
-                  <Button type="submit">Send Reset Link</Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
       </div>
-    </div>
+      <Card className="w-full max-w-sm shadow-2xl">
+        <CardHeader>
+          <CardTitle className="text-2xl font-headline">Create Your Account</CardTitle>
+          <CardDescription>
+            {referrer 
+                ? `You've been referred by ${referrer}. Complete the form to join.` 
+                : "Enter your desired username and invitation code."
+            }
+        </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="username"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Username</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. janesmith" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="invitationCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Invitation Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your exclusive code" type="password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? "Processing..." : "Join / Login"}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </main>
   );
 }

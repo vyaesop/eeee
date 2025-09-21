@@ -47,7 +47,8 @@ export const Header = () => {
             </>
           ) : (
             <>
-              <Button onClick={() => router.push('/join')} variant="secondary">Login</Button>
+              <Button onClick={() => router.push('/')} variant="secondary">Login</Button>
+              <Button onClick={() => router.push('/register')}>Sign Up</Button>
             </>
           )}
         </div>
@@ -76,7 +77,7 @@ export const Header = () => {
                 </div>
               ) : (
                 <div className="flex flex-col gap-4">
-                  <Button onClick={() => router.push('/join')} variant="secondary" className="w-full">Login</Button>
+                  <Button onClick={() => router.push('/')} variant="secondary" className="w-full">Login</Button>
                   <Button onClick={() => router.push('/register')} className="w-full">Sign Up</Button>
                 </div>
               )}
