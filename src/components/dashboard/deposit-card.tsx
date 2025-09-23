@@ -15,6 +15,7 @@ import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { getTierFromDeposit } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
 
 const depositSchema = z.object({
   amount: z.preprocess(
@@ -73,7 +74,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
 
       toast({
         title: "Deposit Successful",
-        description: `Br ${values.amount.toLocaleString()} has been added to your account.`,
+        description: `${formatCurrency(values.amount)} has been added to your account.`,
       });
       if(onDeposit) onDeposit(); 
       form.reset();
