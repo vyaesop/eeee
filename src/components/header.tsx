@@ -13,6 +13,7 @@ const navLinks = [
   { href: "/", label: "Home" },
   { href: "/about", label: "About Us" },
   { href: "/membership", label: "Membership" },
+  { href: "/dashboard/withdrawal", label: "Withdraw" },
 ];
 
 export const Header = () => {
@@ -45,7 +46,6 @@ export const Header = () => {
           {user ? (
             <>
               <Button onClick={() => router.push('/dashboard')} variant="secondary">Dashboard</Button>
-              <Button onClick={() => router.push('/dashboard/withdrawal')}>Withdraw</Button>
               <Button onClick={handleLogout} variant="outline">Logout</Button>
             </>
           ) : (
@@ -76,7 +76,6 @@ export const Header = () => {
               {user ? (
                 <div className="flex flex-col gap-4">
                   <Button onClick={() => router.push('/dashboard')} variant="secondary" className="w-full">Dashboard</Button>
-                  <Button onClick={() => router.push('/dashboard/withdrawal')} className="w-full">Withdraw</Button>
                   <Button onClick={handleLogout} variant="outline" className="w-full">Logout</Button>
                 </div>
               ) : (
