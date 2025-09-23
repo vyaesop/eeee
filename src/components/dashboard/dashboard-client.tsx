@@ -12,6 +12,7 @@ import { UserData } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DepositCard } from "./deposit-card";
+import { WithdrawCard } from "./withdraw-card";
 import { ReferralProgramCard } from "./referral-card";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -75,6 +76,8 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
     });
     return () => unsub();
   }, [user?.displayName]);
+  
+  const totalBalance = totalDeposit + earnings;
 
   return (
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -95,16 +98,16 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Live Earnings</CardDescription>
-                <CardTitle className="text-4xl">{formatCurrency(earnings)}</CardTitle>
+                <CardDescription>Total Balance</CardDescription>
+                <CardTitle className="text-4xl">{formatCurrency(totalBalance)}</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-xs text-muted-foreground">+{(currentTier?.dailyReturn ?? 0) * 100}% from yesterday</div>
+                <div className="text-xs text-muted-foreground">Principal + Earnings</div>
               </CardContent>
             </Card>
              <Card>
               <CardHeader className="pb-2">
-                <CardDescription>Total Principal</CardDescription>
+                <CardDescription>Principal</CardDescription>
                 <CardTitle className="text-4xl">{formatCurrency(totalDeposit)}</CardTitle>
               </CardHeader>
                <CardContent>
@@ -113,8 +116,9 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
             </Card>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <DepositCard onDeposit={fetchUserData} />
+          <WithdrawCard onWithdraw={fetchUserData} totalBalance={totalBalance} />
           <ReferralProgramCard />
         </div>
 
