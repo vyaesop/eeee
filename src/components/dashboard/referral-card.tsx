@@ -5,9 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Button } from "@/components/ui/button";
-import { Check, Copy } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
 
 interface Referral {
   id: string;
@@ -16,9 +14,7 @@ interface Referral {
 
 export const ReferralProgramCard = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [referrals, setReferrals] = useState<Referral[]>([]);
-  const [copied, setCopied] = useState(false);
   const [referralLink, setReferralLink] = useState("");
 
   useEffect(() => {
@@ -39,13 +35,6 @@ export const ReferralProgramCard = () => {
     return () => unsubscribe();
   }, [user]);
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(referralLink);
-    toast({ title: "Copied!", description: "Referral link copied to clipboard." });
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
     <Card className="shadow-lg">
       <CardHeader>
@@ -56,13 +45,15 @@ export const ReferralProgramCard = () => {
         <div className="mb-4">
           <p className="text-sm font-semibold mb-2">Your Unique Referral Link</p>
           <div className="flex items-center gap-2">
-             <div className="flex-grow p-2 bg-muted rounded-md text-sm font-mono select-all overflow-x-auto">
-               {referralLink}
-             </div>
-             <Button onClick={handleCopy} size="icon" variant="ghost">
-               {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-             </Button>
-           </div>
+            <Input 
+              readOnly 
+              value={referralLink} 
+              className="flex-grow p-2 bg-muted rounded-md text-sm font-mono select-all overflow-x-auto" 
+            />
+          </div>
+           <p className="text-xs text-muted-foreground mt-1">
+            Click the link to select it, then press Ctrl+C or Cmd+C to copy.
+          </p>
         </div>
         <div>
           <p className="text-sm font-semibold">Your Referrals</p>

@@ -6,21 +6,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/hooks/use-auth";
 import { getTierFromDeposit, tiers } from "@/lib/constants";
 import { UserData } from "@/lib/types";
-import {
-  Banknote,
-  TrendingUp,
-} from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { DepositCard } from "./deposit-card";
 import { ReferralProgramCard } from "./referral-card";
 import { doc, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Content } from "@radix-ui/react-dropdown-menu";
 import { formatCurrency } from "@/lib/utils";
 
 
@@ -119,25 +113,9 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
             </Card>
         </div>
 
-        <DepositCard onDeposit={fetchUserData} />
-
         <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-                 <CardHeader>
-                    <CardTitle>APY Meter</CardTitle>
-                    <CardDescription>Annual Percentage Yield based on your current package.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium">APY</p>
-                    <p className="font-bold text-primary">{apy.toFixed(2)}%</p>
-                    </div>
-                    <Progress value={apy} className="w-full" />
-                </CardContent>
-            </Card>
-            <div className="md:col-span-2 lg:col-span-1 xl:col-span-2">
-              <ReferralProgramCard />
-            </div>
+          <DepositCard onDeposit={fetchUserData} />
+          <ReferralProgramCard />
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">

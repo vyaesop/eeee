@@ -45,7 +45,6 @@ export const Header = () => {
         <div className="hidden md:flex items-center gap-4">
           {user ? (
             <>
-              <Button onClick={() => router.push('/dashboard')} variant="secondary">Dashboard</Button>
               <Button onClick={handleLogout} variant="outline">Logout</Button>
             </>
           ) : (

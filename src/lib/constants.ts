@@ -80,13 +80,22 @@ export const tiers = [
     color: "#78350f",
     apy: Math.pow(1 + 0.05, 365) - 1,
   },
+  {
+    name: "Large Scale Investment",
+    minDeposit: 13000,
+    maxDeposit: Number.POSITIVE_INFINITY,
+    dailyReturn: 0.055,
+    color: "#451a03",
+    apy: Math.pow(1 + 0.055, 365) - 1,
+  },
 ];
 
 export function getTierFromDeposit(deposit: number) {
-  if (deposit === 0) return "Observer";
-  // Find the closest matching tier for a given deposit, in case of discrepancies.
-  const closestTier = tiers.reduce((prev, curr) => {
-    return (Math.abs(curr.minDeposit - deposit) < Math.abs(prev.minDeposit - deposit) ? curr : prev);
-  });
-  return closestTier.name;
+  // Sort tiers by minDeposit in descending order to find the highest applicable tier
+  const sortedTiers = [...tiers].sort((a, b) => b.minDeposit - a.minDeposit);
+
+  // Find the first tier for which the deposit is sufficient
+  const applicableTier = sortedTiers.find(tier => deposit >= tier.minDeposit);
+
+  return applicableTier ? applicableTier.name : "Observer";
 }
