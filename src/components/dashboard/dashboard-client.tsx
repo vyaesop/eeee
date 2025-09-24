@@ -96,26 +96,25 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
   
   useEffect(() => {
     setEarnings(earningsBalance);
-
-    const currentTier = tiers.find(tier => tier.name === getTierFromDeposit(totalDeposit));
-    if (!currentTier || currentTier.name === 'Observer') {
-      setApy(0);
-      return;
-    }
-
-    const dailyRate = currentTier.dailyReturn ?? 0;
-    const annualRate = Math.pow(1 + dailyRate, 365) - 1;
-    setApy(annualRate * 100);
-
-    const interval = setInterval(() => {
+    const tierName = getTierFromDeposit(totalDeposit);
+    const currentTier = tiers.find(tier => tier.name === tierName);
+  
+    if (currentTier) {
+      const dailyRate = currentTier.dailyReturn;
+      const annualRate = Math.pow(1 + dailyRate, 365) - 1;
+      setApy(annualRate * 100);
+  
       if (totalDeposit > 0 && dailyRate > 0) {
         const earningsPerSecond = totalDeposit * dailyRate / 86400;
-        setEarnings((prev) => prev + earningsPerSecond * 2);
+        const interval = setInterval(() => {
+          setEarnings(prevEarnings => prevEarnings + (earningsPerSecond * 2));
+        }, 2000);
+        return () => clearInterval(interval);
       }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [totalDeposit, earningsBalance, getTierFromDeposit]);
+    } else {
+      setApy(0);
+    }
+  }, [totalDeposit, earningsBalance]);
   
   const fetchUserData = useCallback(async () => {
     if (!user?.displayName) return;
