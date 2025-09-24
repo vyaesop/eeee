@@ -33,10 +33,6 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
   const earningsBalance = userData?.earningsBalance ?? 0;
 
   const [earnings, setEarnings] = useState(earningsBalance);
-  const [apy, setApy] = useState(0);
-
-  const currentTierName = getTierFromDeposit(totalDeposit);
-  const currentTier = tiers.find(tier => tier.name === currentTierName);
 
   const calculateAndApplyEarnings = useCallback(async () => {
     if (!user?.displayName || !userData) return;
@@ -79,7 +75,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
     } catch (error) {
         console.error("Error calculating earnings:", error);
     }
-}, [user, userData]);
+  }, [user, userData]);
 
 
   useEffect(() => {
@@ -98,22 +94,17 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
     setEarnings(earningsBalance);
     const tierName = getTierFromDeposit(totalDeposit);
     const currentTier = tiers.find(tier => tier.name === tierName);
-  
-    if (currentTier) {
-      const dailyRate = currentTier.dailyReturn;
-      const annualRate = Math.pow(1 + dailyRate, 365) - 1;
-      setApy(annualRate * 100);
-  
-      if (totalDeposit > 0 && dailyRate > 0) {
-        const earningsPerSecond = totalDeposit * dailyRate / 86400;
-        const interval = setInterval(() => {
-          setEarnings(prevEarnings => prevEarnings + (earningsPerSecond * 2));
+
+    let intervalId: NodeJS.Timeout;
+
+    if (currentTier && totalDeposit > 0 && currentTier.dailyReturn > 0) {
+        const earningsPerSecond = totalDeposit * currentTier.dailyReturn / 86400;
+        intervalId = setInterval(() => {
+            setEarnings(prevEarnings => prevEarnings + earningsPerSecond * 2);
         }, 2000);
-        return () => clearInterval(interval);
-      }
-    } else {
-      setApy(0);
     }
+
+    return () => clearInterval(intervalId);
   }, [totalDeposit, earningsBalance]);
   
   const fetchUserData = useCallback(async () => {
@@ -122,7 +113,8 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
   }, [user?.displayName, calculateAndApplyEarnings]);
   
   const totalBalance = totalDeposit + earnings;
-
+  const currentTierName = getTierFromDeposit(totalDeposit);
+  
   return (
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
         <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-2 xl:grid-cols-4">
