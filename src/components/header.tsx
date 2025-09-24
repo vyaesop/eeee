@@ -14,6 +14,7 @@ const navLinks = [
   { href: "/about", label: "About Us" },
   { href: "/membership", label: "Membership" },
   { href: "/dashboard/withdrawal", label: "Withdraw" },
+  { href: "/dashboard/support", label: "Support" },
 ];
 
 export const Header = () => {
