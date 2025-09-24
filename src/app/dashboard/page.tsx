@@ -1,23 +1,29 @@
 
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { getTierFromDeposit, tiers } from '@/lib/constants';
 import { InvestmentPackageCard } from '@/components/dashboard/investment-package-card';
 import { useUserData } from './layout';
-import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const userData = useUserData();
   const router = useRouter();
 
+  useEffect(() => {
+    if (userData?.role === 'admin') {
+      router.replace('/admin');
+    }
+  }, [userData, router]);
+
   const handleDeposit = () => {
-    // In a real app, you'd refetch the user data
     window.location.reload();
   };
 
-  if (!userData) {
-    return null;
+  if (!userData || userData.role === 'admin') {
+    return null; 
   }
 
   const currentTierName = getTierFromDeposit(userData.totalDeposit);
