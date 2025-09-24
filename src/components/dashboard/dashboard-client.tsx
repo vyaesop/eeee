@@ -11,7 +11,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { getTierFromDeposit, tiers } from "@/lib/constants";
 import { UserData } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { DepositCard } from "./deposit-card";
 import { WithdrawCard } from "./withdraw-card";
 import { ReferralProgramCard } from "./referral-card";
@@ -26,16 +25,11 @@ interface DashboardClientProps {
 
 export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserData }) => {
   const { user } = useAuth();
-  const router = useRouter();
   const [userData, setUserData] = useState(initialUserData);
-  
-  const totalDeposit = userData?.totalDeposit ?? 0;
-  const earningsBalance = userData?.earningsBalance ?? 0;
-
-  const [earnings, setEarnings] = useState(earningsBalance);
+  const [liveEarnings, setLiveEarnings] = useState(userData.earningsBalance);
 
   const calculateAndApplyEarnings = useCallback(async () => {
-    if (!user?.displayName || !userData) return;
+    if (!user?.displayName) return;
 
     const userRef = doc(db, "users", user.displayName);
 
@@ -67,7 +61,6 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
                     earningsBalance: newEarningsBalance,
                     lastEarningsUpdate: now.toISOString()
                 });
-                setUserData(prev => ({...prev!, earningsBalance: newEarningsBalance, lastEarningsUpdate: now.toISOString()}));
             } else {
                  transaction.update(userRef, { lastEarningsUpdate: now.toISOString() });
             }
@@ -75,45 +68,44 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
     } catch (error) {
         console.error("Error calculating earnings:", error);
     }
-  }, [user, userData]);
-
+  }, [user]);
 
   useEffect(() => {
     if (user?.displayName) {
-      calculateAndApplyEarnings();
-      const unsub = onSnapshot(doc(db, "users", user.displayName), (doc) => {
+      calculateAndApplyEarnings(); // Run once on mount to capture offline earnings
+      const unsubscribe = onSnapshot(doc(db, "users", user.displayName), (doc) => {
         if (doc.exists()) {
-          setUserData(doc.data() as UserData);
+          const data = doc.data() as UserData;
+          setUserData(data);
+          setLiveEarnings(data.earningsBalance); // Reset live earnings with DB value
         }
       });
-      return () => unsub();
+      return () => unsubscribe();
     }
   }, [user?.displayName, calculateAndApplyEarnings]);
   
   useEffect(() => {
-    setEarnings(earningsBalance);
-    const tierName = getTierFromDeposit(totalDeposit);
-    const currentTier = tiers.find(tier => tier.name === tierName);
-
-    let intervalId: NodeJS.Timeout;
-
-    if (currentTier && totalDeposit > 0 && currentTier.dailyReturn > 0) {
-        const earningsPerSecond = totalDeposit * currentTier.dailyReturn / 86400;
-        intervalId = setInterval(() => {
-            setEarnings(prevEarnings => prevEarnings + earningsPerSecond * 2);
-        }, 2000);
+    const currentTier = tiers.find(tier => tier.name === userData.membershipTier);
+    if (!currentTier || userData.totalDeposit <= 0 || currentTier.dailyReturn <= 0) {
+      return; 
     }
 
+    const earningsPerSecond = userData.totalDeposit * currentTier.dailyReturn / 86400;
+    
+    const intervalId = setInterval(() => {
+        setLiveEarnings(prevEarnings => prevEarnings + earningsPerSecond);
+    }, 1000);
+
     return () => clearInterval(intervalId);
-  }, [totalDeposit, earningsBalance]);
+  }, [userData.totalDeposit, userData.membershipTier]);
   
   const fetchUserData = useCallback(async () => {
     if (!user?.displayName) return;
-    calculateAndApplyEarnings();
+    await calculateAndApplyEarnings();
   }, [user?.displayName, calculateAndApplyEarnings]);
   
-  const totalBalance = totalDeposit + earnings;
-  const currentTierName = getTierFromDeposit(totalDeposit);
+  const totalBalance = userData.totalDeposit + liveEarnings;
+  const currentTierName = userData.membershipTier;
   
   return (
       <div className="grid auto-rows-max items-start gap-4 md:gap-8 lg:col-span-2">
@@ -144,7 +136,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
              <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Principal</CardDescription>
-                <CardTitle className="text-4xl">{formatCurrency(totalDeposit)}</CardTitle>
+                <CardTitle className="text-4xl">{formatCurrency(userData.totalDeposit)}</CardTitle>
               </Header>
                <CardContent>
                 <div className="text-xs text-muted-foreground">Your total deposited amount</div>
