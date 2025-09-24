@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
 import { doc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
+import { useUserData } from '@/app/dashboard/layout';
 import { getTierFromDeposit, tiers } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -31,7 +31,7 @@ interface InvestmentPackageCardProps {
 }
 
 export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCardProps) => {
-  const { user } = useAuth();
+  const userData = useUserData();
   const { toast } = useToast();
   const [isDepositing, setIsDepositing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -44,10 +44,10 @@ export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCard
   });
 
   async function onSubmit(values: z.infer<typeof depositSchema>) {
-    if (!user || !user.displayName) return;
+    if (!userData) return;
     setIsDepositing(true);
 
-    const userRef = doc(db, "users", user.displayName);
+    const userRef = doc(db, "users", userData.username);
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -72,7 +72,7 @@ export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCard
                 const referralBonus = values.amount * 0.05; // 5% bonus
                 transaction.update(referrerRef, { earningsBalance: increment(referralBonus) });
                 
-                const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, user.displayName! );
+                const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, userData.username! );
                 transaction.set(referralSubcollectionRef, { deposit: values.amount }, { merge: true });
             }
         }

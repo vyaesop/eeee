@@ -20,7 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { LogOut, Cog, User, PanelLeft, Home, Landmark } from "lucide-react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { UserData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
@@ -56,8 +56,15 @@ export default function DashboardLayout({
       try {
         const userRef = doc(db, 'users', storedUser);
         const userSnap = await getDoc(userRef);
+        
         if (userSnap.exists()) {
-          setUserData(userSnap.data() as UserData);
+          const basicData = userSnap.data() as UserData;
+          const referralsRef = collection(db, `users/${storedUser}/referrals`);
+          const referralsSnap = await getDocs(referralsRef);
+          const referrals = referralsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, deposit: number }));
+          
+          setUserData({ ...basicData, referrals });
+
         } else {
             if(storedUser !== 'admin') {
                 console.error("User document not found in Firestore.");

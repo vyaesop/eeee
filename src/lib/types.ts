@@ -9,4 +9,5 @@ export interface UserData {
   referralCode: string;
   membershipTier: string;
   lastEarningsUpdate: string;
+  referrals: { id: string, deposit: number }[];
 }
