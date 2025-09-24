@@ -38,8 +38,16 @@ export default function JoinPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [referrer, setReferrer] = useState<string | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
   const { logIn, user, loading: authLoading } = useAuth();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      invitationCode: "",
+    },
+  });
 
   useEffect(() => {
     if (!authLoading && user) {
@@ -50,17 +58,10 @@ export default function JoinPage() {
   useEffect(() => {
     const ref = searchParams.get("ref");
     if (ref) {
-      setReferrer(ref);
+      setReferralCode(ref);
+      form.setValue("invitationCode", ref);
     }
-  }, [searchParams]);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      username: "",
-      invitationCode: "",
-    },
-  });
+  }, [searchParams, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -82,7 +83,7 @@ export default function JoinPage() {
         return;
     }
 
-    if (values.invitationCode !== VALID_INVITATION_CODE) {
+    if (values.invitationCode !== VALID_INVITATION_CODE && !referralCode) {
         toast({
             variant: "destructive",
             title: "Invalid Invitation Code",
@@ -107,11 +108,10 @@ export default function JoinPage() {
             return;
         }
         
-        // Find referrer's username from referral code
         let referrerUsername: string | null = null;
-        if (referrer) {
+        if (referralCode) {
              const usersRef = collection(db, "users");
-             const q = query(usersRef, where("referralCode", "==", referrer));
+             const q = query(usersRef, where("referralCode", "==", referralCode));
              const querySnapshot = await getDocs(q);
              if (!querySnapshot.empty) {
                  referrerUsername = querySnapshot.docs[0].id;
@@ -161,7 +161,7 @@ export default function JoinPage() {
         <CardHeader>
           <CardTitle className="text-2xl font-headline">Get Started</CardTitle>
           <CardDescription>
-            {referrer 
+            {referralCode 
                 ? `You've been referred. Enter your details to join.` 
                 : "Enter your desired username and invitation code."
             }
