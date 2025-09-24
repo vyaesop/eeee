@@ -28,7 +28,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => router.push('/membership')} size="lg">
+              <Button onClick={() => router.push('/dashboard/membership')} size="lg">
                 Choose Your Membership Plan
               </Button>
             </CardContent>

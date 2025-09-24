@@ -27,7 +27,7 @@ const formSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
-  referralCode: z.string().optional(),
+  referredBy: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -63,14 +63,14 @@ export default function RegisterPage() {
       email: "",
       password: "",
       confirmPassword: "",
-      referralCode: ref || "",
+      referredBy: ref || "",
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signUp(values.email, values.password, values.username, values.referralCode);
+      await signUp(values.email, values.password, values.username, values.referredBy);
       setShowSuccessDialog(true);
     } catch (error: any) {
       console.error("Registration Error:", error);
@@ -155,12 +155,12 @@ export default function RegisterPage() {
             />
              <FormField
               control={form.control}
-              name="referralCode"
+              name="referredBy"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Referral Code</FormLabel>
+                  <FormLabel>Referred By</FormLabel>
                   <FormControl>
-                    <Input {...field} readOnly={!!ref} className={ref ? 'bg-muted' : ''} />
+                    <Input {...field} readOnly={!!ref} className={ref ? 'bg-muted' : ''} placeholder="Optional referral username"/>
                   </FormControl>
                   <FormMessage />
                 </FormItem>

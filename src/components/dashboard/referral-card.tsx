@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,22 +7,27 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
+import { UserData } from "@/lib/types";
 
 interface Referral {
   id: string;
   deposit: number;
 }
 
-export const ReferralProgramCard = () => {
+interface ReferralCardProps {
+    userData: UserData | null;
+}
+
+export const ReferralProgramCard = ({ userData }: ReferralCardProps) => {
   const { user } = useAuth();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [referralLink, setReferralLink] = useState("");
 
   useEffect(() => {
-    if (user && user.displayName) {
-      setReferralLink(`${window.location.origin}/?ref=${user.displayName}`);
+    if (userData?.referralCode) {
+      setReferralLink(`${window.location.origin}/?ref=${userData.referralCode}`);
     }
-  }, [user]);
+  }, [userData]);
 
   useEffect(() => {
     if (!user || !user.displayName) return;
@@ -39,7 +45,7 @@ export const ReferralProgramCard = () => {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>Referral Program</CardTitle>
-        <CardDescription>Earn a 5% bonus on the first deposit of users you refer.</CardDescription>
+        <CardDescription>Earn a 1.5% bonus on the first deposit of users you refer.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
@@ -48,6 +54,7 @@ export const ReferralProgramCard = () => {
             <Input 
               readOnly 
               value={referralLink} 
+              onClick={(e) => (e.target as HTMLInputElement).select()}
               className="flex-grow p-2 bg-muted rounded-md text-sm font-mono select-all overflow-x-auto" 
             />
           </div>

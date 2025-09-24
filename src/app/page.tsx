@@ -6,7 +6,7 @@ import { useState, useEffect } from "react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, query, collection, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 
 import { Button } from "@/components/ui/button";
@@ -107,11 +107,26 @@ export default function JoinPage() {
             return;
         }
         
+        // Find referrer's username from referral code
+        let referrerUsername: string | null = null;
+        if (referrer) {
+             const usersRef = collection(db, "users");
+             const q = query(usersRef, where("referralCode", "==", referrer));
+             const querySnapshot = await getDocs(q);
+             if (!querySnapshot.empty) {
+                 referrerUsername = querySnapshot.docs[0].id;
+             } else {
+                 toast({ variant: "destructive", title: "Invalid Referral", description: "The referral code used is not valid." });
+                 setIsLoading(false);
+                 return;
+             }
+        }
+
         // New user, redirect to registration page
         const params = new URLSearchParams();
         params.set('username', values.username);
-        if(referrer) {
-            params.set('ref', referrer);
+        if(referrerUsername) {
+            params.set('ref', referrerUsername);
         }
 
         router.push(`/register?${params.toString()}`);
@@ -147,7 +162,7 @@ export default function JoinPage() {
           <CardTitle className="text-2xl font-headline">Get Started</CardTitle>
           <CardDescription>
             {referrer 
-                ? `You've been referred by ${referrer}. Enter your details to join.` 
+                ? `You've been referred. Enter your details to join.` 
                 : "Enter your desired username and invitation code."
             }
         </CardDescription>

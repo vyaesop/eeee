@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -58,15 +59,15 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
           membershipTier: newTier,
         });
         
-        const referrer = userDoc.data().referredBy;
-        if (referrer) {
-            const referrerRef = doc(db, "users", referrer);
+        const referrerId = userDoc.data().referredBy;
+        if (referrerId) {
+            const referrerRef = doc(db, "users", referrerId);
             const referrerDoc = await transaction.get(referrerRef);
             if (referrerDoc.exists()) {
-                const referralBonus = values.amount * 0.05;
+                const referralBonus = values.amount * 0.015;
                 transaction.update(referrerRef, { earningsBalance: increment(referralBonus) });
                 
-                const referralSubcollectionRef = doc(db, `users/${referrer}/referrals`, user.displayName! );
+                const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, user.displayName! );
                 transaction.set(referralSubcollectionRef, { deposit: values.amount }, { merge: true });
             }
         }

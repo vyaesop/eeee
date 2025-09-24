@@ -27,6 +27,15 @@ const FullPageLoader = () => (
   </div>
 );
 
+const generateReferralCode = (length: number): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<AuthContextType['user']>(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +60,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     
     const initialDeposit = 0;
+    const referralCode = generateReferralCode(6);
+    
     const newUser = {
       username: username,
       email: email,
@@ -60,7 +71,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       autoCompounding: true,
       joined: new Date().toISOString(),
       referredBy: referredBy || null,
-      tier: getTierFromDeposit(initialDeposit),
+      referralCode: referralCode,
+      membershipTier: getTierFromDeposit(initialDeposit),
+      lastEarningsUpdate: new Date().toISOString(),
     };
 
     await setDoc(userRef, newUser);

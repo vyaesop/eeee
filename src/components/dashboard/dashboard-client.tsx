@@ -1,3 +1,4 @@
+
 'use client';
 import {
   Card,
@@ -14,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { DepositCard } from "./deposit-card";
 import { WithdrawCard } from "./withdraw-card";
 import { ReferralProgramCard } from "./referral-card";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { formatCurrency } from "@/lib/utils";
 
@@ -37,8 +38,53 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
   const currentTierName = getTierFromDeposit(totalDeposit);
   const currentTier = tiers.find(tier => tier.name === currentTierName);
 
+  const calculateAndApplyEarnings = useCallback(async () => {
+    if (!user?.displayName || !userData) return;
+
+    const userRef = doc(db, "users", user.displayName);
+
+    try {
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userRef);
+            if (!userDoc.exists()) {
+                throw new Error("User not found");
+            }
+
+            const data = userDoc.data() as UserData;
+            const lastUpdate = new Date(data.lastEarningsUpdate || data.joined);
+            const now = new Date();
+            const secondsSinceLastUpdate = (now.getTime() - lastUpdate.getTime()) / 1000;
+            
+            const currentTier = tiers.find(t => t.name === data.membershipTier);
+            if (!currentTier || currentTier.dailyReturn === 0 || data.totalDeposit === 0) {
+                transaction.update(userRef, { lastEarningsUpdate: now.toISOString() });
+                return;
+            }
+
+            const dailyRate = currentTier.dailyReturn;
+            const earningsPerSecond = data.totalDeposit * dailyRate / 86400; // 86400 seconds in a day
+            const newEarnings = earningsPerSecond * secondsSinceLastUpdate;
+            
+            if (newEarnings > 0) {
+                const newEarningsBalance = (data.earningsBalance || 0) + newEarnings;
+                transaction.update(userRef, {
+                    earningsBalance: newEarningsBalance,
+                    lastEarningsUpdate: now.toISOString()
+                });
+                setUserData(prev => ({...prev!, earningsBalance: newEarningsBalance, lastEarningsUpdate: now.toISOString()}));
+            } else {
+                 transaction.update(userRef, { lastEarningsUpdate: now.toISOString() });
+            }
+        });
+    } catch (error) {
+        console.error("Error calculating earnings:", error);
+    }
+}, [user, userData]);
+
+
   useEffect(() => {
     if (user?.displayName) {
+      calculateAndApplyEarnings();
       const unsub = onSnapshot(doc(db, "users", user.displayName), (doc) => {
         if (doc.exists()) {
           setUserData(doc.data() as UserData);
@@ -46,7 +92,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
       });
       return () => unsub();
     }
-  }, [user?.displayName]);
+  }, [user?.displayName, calculateAndApplyEarnings]);
   
   useEffect(() => {
     setEarnings(earningsBalance);
@@ -61,7 +107,8 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
     setApy(annualRate * 100);
 
     const interval = setInterval(() => {
-      setEarnings((prev) => prev + totalDeposit * dailyRate / (24 * 60 * 60 / 2));
+        const earningsPerSecond = totalDeposit * dailyRate / 86400;
+        setEarnings((prev) => prev + earningsPerSecond * 2);
     }, 2000);
 
     return () => clearInterval(interval);
@@ -69,13 +116,8 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
 
   const fetchUserData = useCallback(async () => {
     if (!user?.displayName) return;
-    const unsub = onSnapshot(doc(db, "users", user.displayName), (doc) => {
-      if (doc.exists()) {
-        setUserData(doc.data() as UserData);
-      }
-    });
-    return () => unsub();
-  }, [user?.displayName]);
+    calculateAndApplyEarnings();
+  }, [user?.displayName, calculateAndApplyEarnings]);
   
   const totalBalance = totalDeposit + earnings;
 
@@ -100,16 +142,16 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               <CardHeader className="pb-2">
                 <CardDescription>Total Balance</CardDescription>
                 <CardTitle className="text-4xl">{formatCurrency(totalBalance)}</CardTitle>
-              </CardHeader>
+              </Header>
               <CardContent>
-                <div className="text-xs text-muted-foreground">Principal + Earnings</div>
+                <div className="text-xs text-muted-foreground">Principal + Real-time Earnings</div>
               </CardContent>
             </Card>
              <Card>
               <CardHeader className="pb-2">
                 <CardDescription>Principal</CardDescription>
                 <CardTitle className="text-4xl">{formatCurrency(totalDeposit)}</CardTitle>
-              </CardHeader>
+              </Header>
                <CardContent>
                 <div className="text-xs text-muted-foreground">Your total deposited amount</div>
               </CardContent>
@@ -119,7 +161,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
         <div className="grid gap-4 md:grid-cols-3">
           <DepositCard onDeposit={fetchUserData} />
           <WithdrawCard onWithdraw={fetchUserData} totalBalance={totalBalance} />
-          <ReferralProgramCard />
+          <ReferralProgramCard userData={userData}/>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">

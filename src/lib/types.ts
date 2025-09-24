@@ -1,3 +1,4 @@
+
 export interface UserData {
   username: string;
   totalDeposit: number;
@@ -5,5 +6,7 @@ export interface UserData {
   autoCompounding: boolean;
   joined: string;
   referredBy: string | null;
+  referralCode: string;
   membershipTier: string;
+  lastEarningsUpdate: string;
 }
