@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { doc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
-import { getTierFromDeposit } from '@/lib/constants';
+import { getTierFromDeposit, tiers } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 
@@ -25,7 +25,12 @@ const depositSchema = z.object({
   ),
 });
 
-export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
+interface InvestmentPackageCardProps {
+    tier: typeof tiers[number];
+    onDeposit: () => void;
+}
+
+export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCardProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isDepositing, setIsDepositing] = useState(false);
@@ -34,7 +39,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
   const form = useForm<z.infer<typeof depositSchema>>({
     resolver: zodResolver(depositSchema),
     defaultValues: {
-      amount: 0,
+      amount: tier.minDeposit,
     },
   });
 
@@ -64,7 +69,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
             const referrerRef = doc(db, "users", referrerId);
             const referrerDoc = await transaction.get(referrerRef);
             if (referrerDoc.exists()) {
-                const referralBonus = values.amount * 0.05;
+                const referralBonus = values.amount * 0.05; // 5% bonus
                 transaction.update(referrerRef, { earningsBalance: increment(referralBonus) });
                 
                 const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, user.displayName! );
@@ -94,22 +99,24 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
 
   return (
     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <Card className="shadow-lg">
+        <Card className="shadow-lg w-full max-w-sm">
             <CardHeader>
-                <CardTitle>Deposit Funds</CardTitle>
-                <CardDescription>Add money to your account to start earning.</CardDescription>
+                <CardTitle style={{ color: tier.color }}>{tier.name}</CardTitle>
+                <CardDescription>{formatCurrency(tier.minDeposit)} - {tier.maxDeposit === Infinity ? 'Unlimited' : formatCurrency(tier.maxDeposit)}</CardDescription>
             </CardHeader>
             <CardContent>
+                <p className='text-green-500 font-bold'>{(tier.apy * 100).toFixed(2)}% APY</p>
+                <p>Daily Return: {(tier.dailyReturn * 100).toFixed(2)}%</p>
                 <DialogTrigger asChild>
-                    <Button className="w-full">Deposit</Button>
+                    <Button className="w-full mt-4" style={{ backgroundColor: tier.color }}>Choose Plan</Button>
                 </DialogTrigger>
             </CardContent>
         </Card>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Make a Deposit</DialogTitle>
+          <DialogTitle>Deposit for {tier.name}</DialogTitle>
           <DialogDescription>
-            Enter the amount you wish to deposit. The funds will be added to your principal balance.
+            You are about to deposit funds for the {tier.name} package.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -121,7 +128,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
                 <FormItem>
                   <FormLabel>Amount (in Br)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="e.g., 5000" {...field} />
+                    <Input type="number" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
