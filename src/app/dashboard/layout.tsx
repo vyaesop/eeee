@@ -3,28 +3,10 @@
 
 import { useEffect, useState, createContext, useContext } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { LogOut, Cog, User, PanelLeft, Home, Landmark } from "lucide-react";
+import { UserData } from "@/lib/types";
 import { doc, getDoc, collection, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { UserData } from "@/lib/types";
 import { Loader2 } from "lucide-react";
-import { EIGLogo } from "@/components/eig-logo";
 import { Header } from "@/components/header";
 
 const UserDataContext = createContext<UserData | null>(null);
@@ -58,12 +40,12 @@ export default function DashboardLayout({
         const userSnap = await getDoc(userRef);
         
         if (userSnap.exists()) {
-          const basicData = userSnap.data() as UserData;
+          const basicData = userSnap.data() as Omit<UserData, 'username' | 'referrals'>;
           const referralsRef = collection(db, `users/${storedUser}/referrals`);
           const referralsSnap = await getDocs(referralsRef);
           const referrals = referralsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, deposit: number }));
           
-          setUserData({ username: storedUser, ...basicData, referrals });
+          setUserData({ ...basicData, username: storedUser, referrals });
 
         } else {
             if(storedUser !== 'admin') {
@@ -80,11 +62,6 @@ export default function DashboardLayout({
     fetchUserData();
   }, [router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("eig_user");
-    router.replace("/");
-  };
-
   if (!isClient || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
@@ -95,9 +72,6 @@ export default function DashboardLayout({
       </div>
     );
   }
-
-  const userInitial = user ? user.charAt(0).toUpperCase() : "?";
-  const isAdmin = user === 'admin';
 
   return (
     <UserDataContext.Provider value={userData}>
