@@ -3,10 +3,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { UserData } from "@/lib/types";
 
 interface Referral {
@@ -22,6 +23,7 @@ export const ReferralProgramCard = ({ userData }: ReferralCardProps) => {
   const { user } = useAuth();
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [referralLink, setReferralLink] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
 
   useEffect(() => {
     if (userData?.referralCode) {
@@ -41,11 +43,20 @@ export const ReferralProgramCard = ({ userData }: ReferralCardProps) => {
     return () => unsubscribe();
   }, [user]);
 
+  const copyToClipboard = useCallback(() => {
+    if (referralLink) {
+      navigator.clipboard.writeText(referralLink).then(() => {
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      });
+    }
+  }, [referralLink]);
+
   return (
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>Referral Program</CardTitle>
-        <CardDescription>Earn a 1.5% bonus on the first deposit of users you refer.</CardDescription>
+        <CardDescription>Earn a 5% bonus on the first deposit of users you refer.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
@@ -54,13 +65,12 @@ export const ReferralProgramCard = ({ userData }: ReferralCardProps) => {
             <Input 
               readOnly 
               value={referralLink} 
-              onClick={(e) => (e.target as HTMLInputElement).select()}
               className="flex-grow p-2 bg-muted rounded-md text-sm font-mono select-all overflow-x-auto" 
             />
+            <Button onClick={copyToClipboard} size="sm">
+              {isCopied ? 'Copied!' : 'Copy'}
+            </Button>
           </div>
-           <p className="text-xs text-muted-foreground mt-1">
-            Click the link to select it, then press Ctrl+C or Cmd+C to copy.
-          </p>
         </div>
         <div>
           <p className="text-sm font-semibold">Your Referrals</p>

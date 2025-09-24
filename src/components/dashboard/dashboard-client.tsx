@@ -14,13 +14,22 @@ import { useEffect, useState, useCallback } from "react";
 import { DepositCard } from "./deposit-card";
 import { WithdrawCard } from "./withdraw-card";
 import { ReferralProgramCard } from "./referral-card";
-import { doc, onSnapshot, runTransaction } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { formatCurrency } from "@/lib/utils";
 
 
 interface DashboardClientProps {
   initialUserData: UserData;
+}
+
+const generateReferralCode = (length: number): string => {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
 }
 
 export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserData }) => {
@@ -69,6 +78,16 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
         console.error("Error calculating earnings:", error);
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user?.displayName && !userData.referralCode) {
+      const generatedCode = generateReferralCode(6);
+      const userRef = doc(db, "users", user.displayName);
+      updateDoc(userRef, { referralCode: generatedCode }).then(() => {
+        setUserData(prev => ({ ...prev, referralCode: generatedCode }));
+      });
+    }
+  }, [user?.displayName, userData.referralCode]);
 
   useEffect(() => {
     if (user?.displayName) {
@@ -128,7 +147,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               <CardHeader className="pb-2">
                 <CardDescription>Total Balance</CardDescription>
                 <CardTitle className="text-4xl">{formatCurrency(totalBalance)}</CardTitle>
-              </Header>
+              </CardHeader>
               <CardContent>
                 <div className="text-xs text-muted-foreground">Principal + Real-time Earnings</div>
               </CardContent>
@@ -137,7 +156,7 @@ export const DashboardClient: React.FC<DashboardClientProps> = ({ initialUserDat
               <CardHeader className="pb-2">
                 <CardDescription>Principal</CardDescription>
                 <CardTitle className="text-4xl">{formatCurrency(userData.totalDeposit)}</CardTitle>
-              </Header>
+              </CardHeader>
                <CardContent>
                 <div className="text-xs text-muted-foreground">Your total deposited amount</div>
               </CardContent>
