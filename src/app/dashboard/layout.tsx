@@ -63,7 +63,7 @@ export default function DashboardLayout({
           const referralsSnap = await getDocs(referralsRef);
           const referrals = referralsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, deposit: number }));
           
-          setUserData({ ...basicData, referrals });
+          setUserData({ username: storedUser, ...basicData, referrals });
 
         } else {
             if(storedUser !== 'admin') {
