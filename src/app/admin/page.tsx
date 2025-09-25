@@ -12,7 +12,9 @@ import { formatCurrency } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { Loader2, ShieldCheck } from 'lucide-react';
+import { Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AdminSupportChat } from '@/components/admin/admin-support-chat';
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -28,7 +30,7 @@ export default function AdminPage() {
       const usersCollection = collection(db, 'users');
       const usersSnapshot = await getDocs(usersCollection);
       const usersList = usersSnapshot.docs.map(doc => ({ ...doc.data(), username: doc.id }) as UserData);
-      setUsers(usersList);
+      setUsers(usersList.filter(u => u.username !== 'admin')); // Exclude admin from user management list
     } catch (error) {
       console.error('Error fetching users:', error);
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch users.' });
@@ -94,60 +96,74 @@ export default function AdminPage() {
 
   return (
     <div className="container mx-auto py-8">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-4">
-            <ShieldCheck className="h-8 w-8 text-primary" />
-            <div>
-              <CardTitle>Admin Panel</CardTitle>
-              <CardDescription>Manage users and their roles.</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-             <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-             </div>
-          ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Username</TableHead>
-                <TableHead>Total Deposit</TableHead>
-                <TableHead>Membership Tier</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map(user => (
-                <TableRow key={user.username}>
-                  <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{formatCurrency(user.totalDeposit)}</TableCell>
-                  <TableCell>{user.membershipTier}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${user.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
-                        {user.role || 'user'}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button 
-                      onClick={() => toggleRole(user.username, user.role || 'user')} 
-                      disabled={user.username === 'admin'}
-                      size="sm"
-                      variant={user.role === 'admin' ? 'destructive' : 'outline'}
-                    >
-                      {user.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          )}
-        </CardContent>
-      </Card>
+       <Tabs defaultValue="users" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="users"><ShieldCheck className="mr-2" /> User Management</TabsTrigger>
+          <TabsTrigger value="support"><MessageSquare className="mr-2" /> Support Center</TabsTrigger>
+        </TabsList>
+        <TabsContent value="users">
+            <Card>
+                <CardHeader>
+                    <CardTitle>User Management</CardTitle>
+                    <CardDescription>Manage user roles and view their details.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                {loading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : (
+                <Table>
+                    <TableHeader>
+                    <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Total Deposit</TableHead>
+                        <TableHead>Membership Tier</TableHead>
+                        <TableHead>Role</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                    {users.map(userItem => (
+                        <TableRow key={userItem.username}>
+                        <TableCell className="font-medium">{userItem.username}</TableCell>
+                        <TableCell>{formatCurrency(userItem.totalDeposit)}</TableCell>
+                        <TableCell>{userItem.membershipTier}</TableCell>
+                        <TableCell>
+                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${userItem.role === 'admin' ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                                {userItem.role || 'user'}
+                            </span>
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <Button 
+                            onClick={() => toggleRole(userItem.username, userItem.role || 'user')} 
+                            disabled={userItem.username === 'admin'}
+                            size="sm"
+                            variant={userItem.role === 'admin' ? 'destructive' : 'outline'}
+                            >
+                            {userItem.role === 'admin' ? 'Demote to User' : 'Promote to Admin'}
+                            </Button>
+                        </TableCell>
+                        </TableRow>
+                    ))}
+                    </TableBody>
+                </Table>
+                )}
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="support">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Support Center</CardTitle>
+                    <CardDescription>View user support chats and send replies.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <AdminSupportChat allUsers={users} />
+                </CardContent>
+            </Card>
+        </TabsContent>
+        </Tabs>
     </div>
   );
 }
