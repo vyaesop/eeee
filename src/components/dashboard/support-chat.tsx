@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, doc, setDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,7 @@ export const SupportChat = () => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const messagesCol = collection(db, 'supportChats', user!.displayName!, 'messages');
+  const chatDocRef = doc(db, 'supportChats', user!.displayName!);
 
   useEffect(() => {
     const q = query(messagesCol, orderBy('timestamp', 'asc'));
@@ -44,6 +45,23 @@ export const SupportChat = () => {
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user || !user.displayName) return;
+
+    // Ensure the parent chat document exists
+    const chatDocSnap = await getDoc(chatDocRef);
+    if (!chatDocSnap.exists()) {
+      await setDoc(chatDocRef, {
+        user: user.displayName,
+        lastMessage: newMessage,
+        lastUpdated: serverTimestamp(),
+        unread: true,
+      });
+    } else {
+        await setDoc(chatDocRef, {
+            lastMessage: newMessage,
+            lastUpdated: serverTimestamp(),
+            unread: true,
+          }, { merge: true });
+    }
 
     await addDoc(messagesCol, {
       text: newMessage,
