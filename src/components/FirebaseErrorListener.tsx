@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { errorEmitter } from '@/lib/error-emitter';
 import { type FirestorePermissionError } from '@/lib/errors';
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from './ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
   AlertDialogAction,
