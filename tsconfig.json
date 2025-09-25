@@ -1,6 +1,6 @@
+
 {
   "compilerOptions": {
-    // This is a comment to force a refresh of the TypeScript server
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,

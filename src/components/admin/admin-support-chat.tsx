@@ -17,8 +17,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth';
-import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 interface Message {
   id: string;
@@ -48,7 +49,6 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
   const [loadingChats, setLoadingChats] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (!adminUser) return;
@@ -64,14 +64,17 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
         setSelectedUser(chats[0].user);
       }
       setLoadingChats(false);
-    }, (error) => {
-      console.error("Error fetching active chats:", error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch active chats.' });
-      setLoadingChats(false);
+    }, async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: chatsCol.path,
+          operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setLoadingChats(false);
     });
 
     return () => unsubscribe();
-  }, [adminUser, toast, selectedUser]);
+  }, [adminUser, selectedUser]);
 
   useEffect(() => {
     if (!selectedUser) {
@@ -91,11 +94,22 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
       const chatDocRef = doc(db, 'supportChats', selectedUser);
       const chatDocSnap = await getDoc(chatDocRef);
       if (chatDocSnap.exists() && chatDocSnap.data().unread) {
-        await setDoc(chatDocRef, { unread: false }, { merge: true });
+        setDoc(chatDocRef, { unread: false }, { merge: true }).catch(async (err) => {
+            const permissionError = new FirestorePermissionError({
+                path: chatDocRef.path,
+                operation: 'update',
+                requestResourceData: { unread: false },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
       }
-    }, (error) => {
-      console.error(`Error fetching messages for ${selectedUser}:`, error);
-      setLoadingMessages(false);
+    }, (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: messagesCol.path,
+          operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        setLoadingMessages(false);
     });
 
     return () => unsubscribe();
@@ -112,31 +126,40 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !adminUser || !selectedUser) return;
+    if (!newMessage.trim() || !adminUser?.displayName || !selectedUser) return;
 
+    const messagePayload = {
+      text: newMessage,
+      sender: 'admin' as const,
+      user: adminUser.displayName,
+      timestamp: serverTimestamp(),
+    };
+    
     const messagesCol = collection(db, 'supportChats', selectedUser, 'messages');
     const chatDocRef = doc(db, 'supportChats', selectedUser);
+    
+    setNewMessage('');
 
-    try {
-        await addDoc(messagesCol, {
-          text: newMessage,
-          sender: 'admin',
-          user: adminUser.displayName,
-          timestamp: serverTimestamp(),
-        });
-        setNewMessage('');
+    addDoc(messagesCol, messagePayload).catch(async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+        path: messagesCol.path,
+        operation: 'create',
+        requestResourceData: messagePayload,
+      });
+      errorEmitter.emit('permission-error', permissionError);
+    });
         
-        await setDoc(chatDocRef, { lastMessage: `Admin: ${newMessage}`, lastUpdated: serverTimestamp() }, { merge: true });
-    } catch(error) {
-        console.error("Error sending message:", error);
-        toast({ variant: 'destructive', title: 'Send Error', description: 'Failed to send message.' });
-    }
+    setDoc(chatDocRef, { lastMessage: `Admin: ${newMessage}`, lastUpdated: serverTimestamp() }, { merge: true })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: chatDocRef.path,
+            operation: 'update',
+            requestResourceData: { lastMessage: `Admin: ${newMessage}` },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
   
-  const selectedUserData = useMemo(() => {
-    return allUsers.find(u => u.username === selectedUser);
-  }, [selectedUser, allUsers]);
-
   const getFallback = (username: string | null | undefined) => {
     return username ? username.charAt(0).toUpperCase() : 'U';
   }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserData } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,8 +15,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminSupportChat } from '@/components/admin/admin-support-chat';
-import { updateDoc } from 'firebase/firestore';
-
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -34,18 +34,13 @@ export default function AdminPage() {
     }
 
     const checkAdminStatus = async () => {
-      let adminStatus = false;
-      if (user.displayName === 'admin') {
-        adminStatus = true;
-      } else {
-        const userRef = doc(db, 'users', user.displayName!);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists() && userSnap.data().role === 'admin') {
-          adminStatus = true;
-        }
+      if (!user?.displayName) {
+          router.push('/dashboard');
+          return;
       }
-
-      if (adminStatus) {
+      const userRef = doc(db, 'users', user.displayName);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists() && userSnap.data().role === 'admin') {
         setIsAdmin(true);
       } else {
         toast({ variant: 'destructive', title: 'Access Denied', description: 'You do not have permission to view this page.' });
@@ -67,14 +62,17 @@ export default function AdminPage() {
         .filter(u => u.username !== 'admin');
       setUsers(usersList);
       setLoading(false);
-    }, (error) => {
-      console.error('Error fetching users:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch users.' });
+    }, async (serverError) => {
+      const permissionError = new FirestorePermissionError({
+          path: usersCollection.path,
+          operation: 'list',
+      });
+      errorEmitter.emit('permission-error', permissionError);
       setLoading(false);
     });
 
     return () => unsubscribe();
-  }, [isAdmin, toast]);
+  }, [isAdmin]);
 
 
   const toggleRole = async (username: string, currentRole: 'user' | 'admin') => {
@@ -82,23 +80,40 @@ export default function AdminPage() {
         toast({ variant: 'destructive', title: 'Action Forbidden', description: 'Cannot change the role of the primary admin.' });
         return;
     }
-    try {
-      const userRef = doc(db, 'users', username);
-      const newRole = currentRole === 'admin' ? 'user' : 'admin';
-      await updateDoc(userRef, { role: newRole });
-      toast({ title: 'Success', description: `${username}'s role updated to ${newRole}.` });
-    } catch (error) {
-      console.error(`Error updating role for ${username}:`, error);
-      toast({ variant: 'destructive', title: 'Error', description: `Failed to update ${username}'s role.` });
-    }
+    const userRef = doc(db, 'users', username);
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    
+    updateDoc(userRef, { role: newRole })
+      .then(() => {
+        toast({ title: 'Success', description: `${username}'s role updated to ${newRole}.` });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: { role: newRole },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
   };
 
-  if (authLoading || !isAdmin || loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex items-center space-x-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-lg">Verifying permissions and loading data...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!isAdmin) {
+     return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-lg">Redirecting...</p>
         </div>
       </div>
     );
