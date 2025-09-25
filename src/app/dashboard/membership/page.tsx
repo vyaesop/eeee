@@ -8,6 +8,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 const MembershipPage = () => {
   const router = useRouter();
@@ -20,23 +22,32 @@ const MembershipPage = () => {
   }));
 
   const handleChoosePlan = async (tierName: string, minDeposit: number) => {
-    if (!user) {
+    if (!user || !user.displayName) {
       toast({ variant: "destructive", title: "Error", description: "You must be logged in to choose a plan." });
       return;
     }
 
-    try {
-      const userRef = doc(db, "users", user.displayName!);
-      await updateDoc(userRef, {
-        membershipTier: tierName,
-        totalDeposit: minDeposit
+    const userRef = doc(db, "users", user.displayName);
+    const updateData = {
+      membershipTier: tierName,
+      totalDeposit: minDeposit
+    };
+    
+    updateDoc(userRef, updateData)
+      .then(() => {
+        toast({ title: "Success", description: `You have successfully chosen the ${tierName} plan.` });
+        router.push("/dashboard");
+      })
+      .catch((serverError) => {
+        console.error("Error updating user tier: ", serverError);
+        const permissionError = new FirestorePermissionError({
+          path: userRef.path,
+          operation: 'update',
+          requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        toast({ variant: "destructive", title: "Error", description: "There was an error updating your plan. Please try again." });
       });
-      toast({ title: "Success", description: `You have successfully chosen the ${tierName} plan.` });
-      router.push("/dashboard");
-    } catch (error) {
-      console.error("Error updating user tier: ", error);
-      toast({ variant: "destructive", title: "Error", description: "There was an error updating your plan. Please try again." });
-    }
   };
 
   return (

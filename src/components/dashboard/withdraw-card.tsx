@@ -16,6 +16,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { getTierFromDeposit } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
+
 
 interface WithdrawCardProps {
   onWithdraw: () => void;
@@ -96,8 +99,16 @@ export const WithdrawCard = ({ onWithdraw, totalBalance }: WithdrawCardProps) =>
       if(onWithdraw) onWithdraw();
       form.reset();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Withdrawal failed: ", error);
+       if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'update',
+                requestResourceData: { totalDeposit: '...' }, // Can't know exact values here
+            });
+            errorEmitter.emit('permission-error', permissionError);
+       }
       toast({
         variant: "destructive",
         title: "Withdrawal Failed",

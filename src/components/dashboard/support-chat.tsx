@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -9,6 +8,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 interface Message {
   id: string;
@@ -34,6 +35,12 @@ export const SupportChat = () => {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Message[];
       setMessages(fetchedMessages);
+    }, (serverError) => {
+        const permissionError = new FirestorePermissionError({
+            path: messagesCol.path,
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
     });
     return () => unsubscribe();
   }, [messagesCol]);
@@ -59,20 +66,51 @@ export const SupportChat = () => {
       unread: true,
     };
 
-    if (!chatDocSnap.exists()) {
-      await setDoc(chatDocRef, updateData);
-      await updateDoc(userDocRef, { hasActiveChat: true });
-    } else {
-      await setDoc(chatDocRef, updateData, { merge: true });
-    }
-
-    await addDoc(messagesCol, {
+    const messagePayload = {
       text: newMessage,
-      sender: 'user',
+      sender: 'user' as const,
       user: user.displayName,
       timestamp: serverTimestamp(),
-    });
+    };
+
     setNewMessage('');
+
+    if (!chatDocSnap.exists()) {
+      setDoc(chatDocRef, updateData).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: chatDocRef.path,
+            operation: 'create',
+            requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+      updateDoc(userDocRef, { hasActiveChat: true }).catch(serverError => {
+         const permissionError = new FirestorePermissionError({
+            path: userDocRef.path,
+            operation: 'update',
+            requestResourceData: { hasActiveChat: true },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+    } else {
+      setDoc(chatDocRef, updateData, { merge: true }).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: chatDocRef.path,
+            operation: 'update',
+            requestResourceData: updateData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      });
+    }
+
+    addDoc(messagesCol, messagePayload).catch(serverError => {
+        const permissionError = new FirestorePermissionError({
+            path: messagesCol.path,
+            operation: 'create',
+            requestResourceData: messagePayload,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
   };
 
   return (

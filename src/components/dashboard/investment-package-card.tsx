@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -17,6 +16,8 @@ import { useUserData } from '@/app/dashboard/layout';
 import { getTierFromDeposit, tiers } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
+import { errorEmitter } from '@/lib/error-emitter';
+import { FirestorePermissionError } from '@/lib/errors';
 
 const depositSchema = z.object({
   amount: z.preprocess(
@@ -44,7 +45,7 @@ export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCard
   });
 
   async function onSubmit(values: z.infer<typeof depositSchema>) {
-    if (!userData) return;
+    if (!userData || !userData.username) return;
     setIsDepositing(true);
 
     const userRef = doc(db, "users", userData.username);
@@ -85,8 +86,16 @@ export const InvestmentPackageCard = ({ tier, onDeposit }: InvestmentPackageCard
       if(onDeposit) onDeposit(); 
       form.reset();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Deposit failed: ", error);
+       if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: userRef.path,
+                operation: 'update',
+                requestResourceData: { totalDeposit: `increment(${values.amount})`},
+            });
+            errorEmitter.emit('permission-error', permissionError);
+       }
       toast({
         variant: "destructive",
         title: "Deposit Failed",
