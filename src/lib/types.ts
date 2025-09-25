@@ -10,5 +10,5 @@ export interface UserData {
   membershipTier: string;
   lastEarningsUpdate: string;
   referrals: { id: string, deposit: number }[];
-  role: 'user' | 'admin';
+  role?: 'user' | 'admin';
 }

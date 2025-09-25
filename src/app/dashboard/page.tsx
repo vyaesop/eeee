@@ -7,22 +7,37 @@ import { DashboardClient } from '@/components/dashboard/dashboard-client';
 import { getTierFromDeposit, tiers } from '@/lib/constants';
 import { InvestmentPackageCard } from '@/components/dashboard/investment-package-card';
 import { useUserData } from './layout';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function DashboardPage() {
+  const { user } = useAuth();
   const userData = useUserData();
   const router = useRouter();
 
   useEffect(() => {
-    if (userData?.role === 'admin') {
-      router.replace('/admin');
-    }
-  }, [userData, router]);
+    const checkAdmin = async () => {
+      if (user?.displayName) {
+        if(user.displayName === 'admin') {
+           router.replace('/admin');
+           return;
+        }
+        const userRef = doc(db, 'users', user.displayName);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data().role === 'admin') {
+          router.replace('/admin');
+        }
+      }
+    };
+    checkAdmin();
+  }, [user, router]);
 
   const handleDeposit = () => {
     window.location.reload();
   };
 
-  if (!userData || userData.role === 'admin') {
+  if (!userData) {
     return null; 
   }
 

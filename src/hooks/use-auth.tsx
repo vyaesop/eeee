@@ -74,6 +74,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       referralCode: referralCode,
       membershipTier: getTierFromDeposit(initialDeposit),
       lastEarningsUpdate: new Date().toISOString(),
+      role: 'user' as 'user' | 'admin',
     };
 
     await setDoc(userRef, newUser);
