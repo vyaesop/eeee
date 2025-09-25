@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, doc, setDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp, Timestamp, doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useAuth } from '@/hooks/use-auth';
 import { Input } from '@/components/ui/input';
@@ -24,48 +24,51 @@ export const SupportChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const messagesCol = collection(db, 'supportChats', user!.displayName!, 'messages');
-  const chatDocRef = doc(db, 'supportChats', user!.displayName!);
+  const messagesCol = user?.displayName ? collection(db, 'supportChats', user.displayName, 'messages') : null;
+  const chatDocRef = user?.displayName ? doc(db, 'supportChats', user.displayName) : null;
+  const userDocRef = user?.displayName ? doc(db, 'users', user.displayName) : null;
 
   useEffect(() => {
+    if (!messagesCol) return;
     const q = query(messagesCol, orderBy('timestamp', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Message[];
       setMessages(fetchedMessages);
     });
     return () => unsubscribe();
-  }, []);
+  }, [messagesCol]);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
-      scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight, behavior: 'smooth' });
+      const viewport = scrollAreaRef.current.querySelector('div');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
     }
   }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !user.displayName) return;
+    if (!newMessage.trim() || !user || !user.displayName || !messagesCol || !chatDocRef || !userDocRef) return;
 
-    // Ensure the parent chat document exists
     const chatDocSnap = await getDoc(chatDocRef);
+    const updateData = {
+      user: user.displayName,
+      lastMessage: newMessage,
+      lastUpdated: serverTimestamp(),
+      unread: true,
+    };
+
     if (!chatDocSnap.exists()) {
-      await setDoc(chatDocRef, {
-        user: user.displayName,
-        lastMessage: newMessage,
-        lastUpdated: serverTimestamp(),
-        unread: true,
-      });
+      await setDoc(chatDocRef, updateData);
+      await updateDoc(userDocRef, { hasActiveChat: true });
     } else {
-        await setDoc(chatDocRef, {
-            lastMessage: newMessage,
-            lastUpdated: serverTimestamp(),
-            unread: true,
-          }, { merge: true });
+      await setDoc(chatDocRef, updateData, { merge: true });
     }
 
     await addDoc(messagesCol, {
       text: newMessage,
-      sender: user.displayName === 'admin' ? 'admin' : 'user',
+      sender: 'user',
       user: user.displayName,
       timestamp: serverTimestamp(),
     });
@@ -101,8 +104,9 @@ export const SupportChat = () => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type your message..."
+          disabled={!user?.displayName}
         />
-        <Button type="submit">Send</Button>
+        <Button type="submit" disabled={!user?.displayName}>Send</Button>
       </form>
     </div>
   );

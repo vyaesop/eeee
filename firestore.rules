@@ -1,9 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // WARNING: These rules are insecure and are not recommended for production.
-      allow read, write: if true;
+
+    function isAdmin() {
+      // Check if the user's UID exists in the /admins collection
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow write: if false; 
+    }
+    
+    // Allow admins to read the list of admins
+    match /admins/{userId} {
+      allow read: if isAdmin();
+    }
+
+    match /supportChats/{userId} {
+      allow list, read: if isAdmin();
+      allow read, update, create: if request.auth.uid == userId;
+
+      match /messages/{messageId} {
+        allow read, create: if isAdmin() || request.auth.uid == userId;
+      }
     }
   }
 }

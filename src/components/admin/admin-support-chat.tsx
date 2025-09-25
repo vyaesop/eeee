@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, addDoc, serverTimestamp, Timestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserData } from '@/lib/types';
 import {
@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from '@/hooks/use-auth';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -24,6 +25,13 @@ interface Message {
   sender: 'user' | 'admin' | 'system';
   timestamp: Timestamp;
   user: string;
+}
+
+interface ChatMetadata {
+    user: string;
+    lastMessage: string;
+    lastUpdated: Timestamp;
+    unread: boolean;
 }
 
 interface AdminSupportChatProps {
@@ -35,28 +43,33 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [chatUsers, setChatUsers] = useState<string[]>([]);
+  const [chatUsers, setChatUsers] = useState<ChatMetadata[]>([]);
+  const [loadingChats, setLoadingChats] = useState(true);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchChatUsers = async () => {
-      const chatCollectionGroup = collection(db, 'supportChats');
-      const snapshot = await onSnapshot(chatCollectionGroup, (snap) => {
-          const userIds = snap.docs.map(doc => doc.id);
-          setChatUsers(userIds);
-          if (userIds.length > 0 && !selectedUser) {
-            setSelectedUser(userIds[0]);
-          }
-      });
-      return snapshot;
-    };
+    if (!adminUser) return;
 
-    const unsubscribe = fetchChatUsers();
+    setLoadingChats(true);
+    const chatsCol = collection(db, 'supportChats');
+    const q = query(chatsCol, orderBy('lastUpdated', 'desc'));
 
-    return () => {
-      (async () => { (await unsubscribe)(); })();
-    }
-  }, []);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const chats = snapshot.docs.map(doc => ({ ...doc.data(), user: doc.id })) as ChatMetadata[];
+      setChatUsers(chats);
+      if (chats.length > 0 && !selectedUser) {
+        setSelectedUser(chats[0].user);
+      }
+      setLoadingChats(false);
+    }, (error) => {
+      console.error("Error fetching active chats:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch active chats. Please check your permissions.' });
+      setLoadingChats(false);
+    });
+
+    return () => unsubscribe();
+  }, [adminUser, toast]);
 
   useEffect(() => {
     if (!selectedUser) {
@@ -67,13 +80,21 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
     const messagesCol = collection(db, 'supportChats', selectedUser, 'messages');
     const q = query(messagesCol, orderBy('timestamp', 'asc'));
     
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribe = onSnapshot(q, async (snapshot) => {
       const fetchedMessages = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })) as Message[];
       setMessages(fetchedMessages);
+
+      if (snapshot.docs.length > 0) {
+        const chatDocRef = doc(db, 'supportChats', selectedUser);
+        const chatToUpdate = chatUsers.find(c => c.user === selectedUser);
+        if (chatToUpdate?.unread) {
+            await setDoc(chatDocRef, { unread: false }, { merge: true });
+        }
+      }
     });
 
     return () => unsubscribe();
-  }, [selectedUser]);
+  }, [selectedUser, chatUsers]);
   
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -96,6 +117,9 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
       timestamp: serverTimestamp(),
     });
     setNewMessage('');
+
+    const chatDocRef = doc(db, 'supportChats', selectedUser);
+    await setDoc(chatDocRef, { lastMessage: newMessage, lastUpdated: serverTimestamp() }, { merge: true });
   };
   
   const selectedUserData = useMemo(() => {
@@ -110,10 +134,15 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
             <SelectValue placeholder="Select a user chat" />
           </SelectTrigger>
           <SelectContent>
-            {chatUsers.length > 0 ? (
-              chatUsers.map(username => (
-                <SelectItem key={username} value={username}>
-                  {username}
+            {loadingChats ? (
+                <div className="p-4 text-sm text-muted-foreground">Loading chats...</div>
+            ) : chatUsers.length > 0 ? (
+              chatUsers.map(chat => (
+                <SelectItem key={chat.user} value={chat.user}>
+                  <div className="flex items-center justify-between w-full pr-4">
+                    <span>{chat.user}</span>
+                    {chat.unread && <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>}
+                  </div>
                 </SelectItem>
               ))
             ) : (
@@ -144,7 +173,7 @@ export const AdminSupportChat = ({ allUsers }: AdminSupportChatProps) => {
             </div>
           ))}
         </div>
-        {selectedUser && messages.length === 0 && (
+        {selectedUser && messages.length === 0 && !loadingChats && (
              <div className="text-center text-muted-foreground p-8">No messages in this chat yet.</div>
         )}
       </ScrollArea>
