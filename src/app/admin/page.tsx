@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { collection, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { UserData } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,6 +15,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { Loader2, ShieldCheck, MessageSquare } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AdminSupportChat } from '@/components/admin/admin-support-chat';
+import { updateDoc } from 'firebase/firestore';
+
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -24,47 +26,56 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const { toast } = useToast();
 
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const usersCollection = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersCollection);
-      const usersList = usersSnapshot.docs.map(doc => ({ ...doc.data(), username: doc.id }) as UserData);
-      setUsers(usersList.filter(u => u.username !== 'admin')); // Exclude admin from user management list
-    } catch (error) {
-      console.error('Error fetching users:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch users.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    const checkAdmin = async () => {
-      if (authLoading) return;
-      if (!user?.displayName) {
-        router.push('/login');
-        return;
-      }
-      
+    if (authLoading) return;
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+
+    const checkAdminStatus = async () => {
+      let adminStatus = false;
       if (user.displayName === 'admin') {
-         setIsAdmin(true);
-         fetchUsers();
-         return;
+        adminStatus = true;
+      } else {
+        const userRef = doc(db, 'users', user.displayName!);
+        const userSnap = await getDoc(userRef);
+        if (userSnap.exists() && userSnap.data().role === 'admin') {
+          adminStatus = true;
+        }
       }
 
-      const userRef = doc(db, 'users', user.displayName);
-      const userSnap = await getDoc(userRef);
-      if (userSnap.exists() && userSnap.data().role === 'admin') {
+      if (adminStatus) {
         setIsAdmin(true);
-        fetchUsers();
       } else {
+        toast({ variant: 'destructive', title: 'Access Denied', description: 'You do not have permission to view this page.' });
         router.push('/dashboard');
       }
     };
 
-    checkAdmin();
-  }, [user, authLoading, router]);
+    checkAdminStatus();
+  }, [user, authLoading, router, toast]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+
+    setLoading(true);
+    const usersCollection = collection(db, 'users');
+    const unsubscribe = onSnapshot(usersCollection, (snapshot) => {
+      const usersList = snapshot.docs
+        .map(doc => ({ ...doc.data(), username: doc.id }) as UserData)
+        .filter(u => u.username !== 'admin');
+      setUsers(usersList);
+      setLoading(false);
+    }, (error) => {
+      console.error('Error fetching users:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch users.' });
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [isAdmin, toast]);
+
 
   const toggleRole = async (username: string, currentRole: 'user' | 'admin') => {
     if (username === 'admin') {
@@ -76,19 +87,18 @@ export default function AdminPage() {
       const newRole = currentRole === 'admin' ? 'user' : 'admin';
       await updateDoc(userRef, { role: newRole });
       toast({ title: 'Success', description: `${username}'s role updated to ${newRole}.` });
-      fetchUsers(); // Refresh the user list
     } catch (error) {
       console.error(`Error updating role for ${username}:`, error);
       toast({ variant: 'destructive', title: 'Error', description: `Failed to update ${username}'s role.` });
     }
   };
 
-  if (authLoading || !isAdmin) {
+  if (authLoading || !isAdmin || loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">
         <div className="flex items-center space-x-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-lg">Verifying permissions...</p>
+          <p className="text-lg">Verifying permissions and loading data...</p>
         </div>
       </div>
     );
@@ -108,11 +118,6 @@ export default function AdminPage() {
                     <CardDescription>Manage user roles and view their details.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                {loading ? (
-                    <div className="flex justify-center items-center h-64">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                ) : (
                 <Table>
                     <TableHeader>
                     <TableRow>
@@ -135,8 +140,8 @@ export default function AdminPage() {
                             </span>
                         </TableCell>
                         <TableCell className="text-right">
-                            <Button 
-                            onClick={() => toggleRole(userItem.username, userItem.role || 'user')} 
+                            <Button
+                            onClick={() => toggleRole(userItem.username, userItem.role || 'user')}
                             disabled={userItem.username === 'admin'}
                             size="sm"
                             variant={userItem.role === 'admin' ? 'destructive' : 'outline'}
@@ -148,7 +153,6 @@ export default function AdminPage() {
                     ))}
                     </TableBody>
                 </Table>
-                )}
                 </CardContent>
             </Card>
         </TabsContent>
