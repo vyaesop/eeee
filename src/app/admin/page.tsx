@@ -123,8 +123,8 @@ export default function AdminPage() {
     <div className="container mx-auto py-8">
        <Tabs defaultValue="users" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users"><ShieldCheck className="mr-2" /> User Management</TabsTrigger>
-          <TabsTrigger value="support"><MessageSquare className="mr-2" /> Support Center</TabsTrigger>
+          <TabsTrigger value="users"><div><ShieldCheck className="mr-2" /></div> User Management</TabsTrigger>
+          <TabsTrigger value="support"><div><MessageSquare className="mr-2" /></div> Support Center</TabsTrigger>
         </TabsList>
         <TabsContent value="users">
             <Card>

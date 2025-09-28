@@ -1,65 +1,134 @@
-
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { DashboardClient } from '@/components/dashboard/dashboard-client';
-import { getTierFromDeposit, tiers } from '@/lib/constants';
-import { InvestmentPackageCard } from '@/components/dashboard/investment-package-card';
+import { useState, useEffect } from 'react';
 import { useUserData } from './layout';
-import { doc, getDoc } from 'firebase/firestore';
+import StatCard from '@/components/dashboard/stat-card';
+import { InvestmentPackageCard } from '@/components/dashboard/investment-package-card';
+import { DepositCard } from '@/components/dashboard/deposit-card';
+import { WithdrawCard } from '@/components/dashboard/withdraw-card';
+import { ReferralProgramCard } from '@/components/dashboard/referral-card';
+import ApyMeter from '@/components/dashboard/apy-meter';
+import { SupportChat } from '@/components/dashboard/support-chat';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useAuth } from '@/hooks/use-auth';
+import { UserData } from '@/lib/types';
+import { tiers } from '@/lib/constants';
+import { DollarSign, TrendingUp, Zap, Gift } from 'lucide-react';
+import { MembershipStatus } from '@/components/dashboard/membership-status';
 
 export default function DashboardPage() {
-  const { user } = useAuth();
-  const userData = useUserData();
-  const router = useRouter();
+  const initialUserData = useUserData();
+  const [userData, setUserData] = useState<UserData | null>(initialUserData);
+  const [animatedEarnings, setAnimatedEarnings] = useState(0);
+
+  const fetchUserData = async () => {
+    if (initialUserData?.username) {
+      const userRef = doc(db, 'users', initialUserData.username);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const basicData = userSnap.data() as Omit<UserData, 'username' | 'referrals'>;
+        const referralsRef = collection(db, `users/${initialUserData.username}/referrals`);
+        const referralsSnap = await getDocs(referralsRef);
+        const referrals = referralsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as { id: string, deposit: number }));
+        setUserData({ ...basicData, username: initialUserData.username, referrals });
+      }
+    }
+  };
 
   useEffect(() => {
-    const checkAdmin = async () => {
-      if (user?.displayName) {
-        if(user.displayName === 'admin') {
-           router.replace('/admin');
-           return;
-        }
-        const userRef = doc(db, 'users', user.displayName);
-        const userSnap = await getDoc(userRef);
-        if (userSnap.exists() && userSnap.data().role === 'admin') {
-          router.replace('/admin');
-        }
+    setUserData(initialUserData);
+  }, [initialUserData]);
+
+  useEffect(() => {
+    if (!userData) {
+      return;
+    }
+
+    if (userData.totalDeposit <= 0) {
+      setAnimatedEarnings(userData.earningsBalance);
+      return;
+    }
+
+    const dailyRate = 0.015;
+    const ratePerSecond = dailyRate / 86400;
+
+    const calculateEarnings = () => {
+      const { lastEarningsUpdate, earningsBalance, totalDeposit } = userData;
+      let lastUpdateDate: Date;
+
+      if (!lastEarningsUpdate) {
+        lastUpdateDate = new Date();
+      } else if (typeof (lastEarningsUpdate as any).toDate === 'function') {
+        lastUpdateDate = (lastEarningsUpdate as any).toDate();
+      } else if (typeof (lastEarningsUpdate as any).seconds === 'number') {
+        lastUpdateDate = new Date((lastEarningsUpdate as any).seconds * 1000);
+      } else if (typeof lastEarningsUpdate === 'string') {
+        lastUpdateDate = new Date(lastEarningsUpdate);
+      } else {
+        lastUpdateDate = new Date();
       }
+
+      const now = new Date();
+      const elapsedSeconds = Math.max(0, (now.getTime() - lastUpdateDate.getTime()) / 1000);
+      const accruedEarnings = totalDeposit * ratePerSecond * elapsedSeconds;
+      
+      return earningsBalance + accruedEarnings;
     };
-    checkAdmin();
-  }, [user, router]);
+
+    setAnimatedEarnings(calculateEarnings());
+
+    const interval = setInterval(() => {
+      setAnimatedEarnings(calculateEarnings());
+    }, 120000);
+
+    return () => clearInterval(interval);
+  }, [userData]);
 
   const handleDeposit = () => {
-    window.location.reload();
+    fetchUserData();
+  };
+
+  const handleWithdraw = () => {
+    fetchUserData();
   };
 
   if (!userData) {
-    return null; 
+    return <div>Loading user data...</div>; 
   }
 
-  const currentTierName = getTierFromDeposit(userData.totalDeposit);
+  const totalBalance = userData.totalDeposit + animatedEarnings;
+  const apy = (Math.pow(1 + 0.015, 365) - 1) * 100;
+  const currentTier = tiers.find(tier => userData.totalDeposit >= tier.minDeposit && userData.totalDeposit <= tier.maxDeposit);
 
-  if (currentTierName === 'Observer') {
-    return (
-        <div className="flex flex-col items-center justify-center">
-            <div className="text-center mb-8">
-              <h1 className="text-3xl font-headline">Choose Your Investment Package</h1>
-              <p className="text-muted-foreground">
-                Select a package to start your investment journey.
-              </p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {tiers.filter(t => t.name !== 'Observer').map(tier => (
-                    <InvestmentPackageCard key={tier.name} tier={tier} onDeposit={handleDeposit} />
-                ))}
-            </div>
+  return (
+    <>
+      <MembershipStatus tier={currentTier?.name} />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Principal Balance" value={userData.totalDeposit} icon={<div><DollarSign className="h-4 w-4 text-muted-foreground" /></div>} />
+        <StatCard title="Earnings Balance" value={animatedEarnings} icon={<div><TrendingUp className="h-4 w-4 text-muted-foreground" /></div>} />
+        <StatCard title="Total Deposit" value={userData.totalDeposit} icon={<div><Zap className="h-4 w-4 text-muted-foreground" /></div>} />
+        <StatCard title="Total Earnings" value={totalBalance} icon={<div><Gift className="h-4 w-4 text-muted-foreground" /></div>} />
       </div>
-    );
-  }
-
-  return <DashboardClient initialUserData={userData} />;
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-7 mt-4">
+        <div className="lg:col-span-5">
+          <div className="grid gap-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <DepositCard onDeposit={handleDeposit} userData={userData} />
+              <WithdrawCard onWithdraw={handleWithdraw} totalBalance={totalBalance} />
+            </div>
+            <ReferralProgramCard userData={userData} />
+            <div>
+              <h2 className="text-2xl font-bold tracking-tight mb-4">Investment Packages</h2>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {tiers.map(tier => (
+                      <InvestmentPackageCard key={tier.name} tier={tier} onDeposit={handleDeposit}/>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+      </div>
+    </>
+  );
 }

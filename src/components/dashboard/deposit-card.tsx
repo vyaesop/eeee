@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose, DialogTrigger } from "@/components/ui/dialog";
-import { doc, updateDoc, increment, getDoc, runTransaction } from 'firebase/firestore';
+import { doc, updateDoc, increment, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { useUserData } from '@/app/dashboard/layout';
+import { UserData } from '@/lib/types';
 import { getTierFromDeposit } from '@/lib/constants';
 import { Loader2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
@@ -20,14 +20,10 @@ import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 
 const depositSchema = z.object({
-  amount: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
-    z.number().positive("Amount must be positive")
-  ),
+  amount: z.coerce.number().min(1, { message: "Amount must be at least Br 1."}),
 });
 
-export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
-  const userData = useUserData();
+export const DepositCard = ({ onDeposit, userData }: { onDeposit: () => void, userData: UserData | null }) => {
   const { toast } = useToast();
   const [isDepositing, setIsDepositing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -35,44 +31,49 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
   const form = useForm<z.infer<typeof depositSchema>>({
     resolver: zodResolver(depositSchema),
     defaultValues: {
-      amount: 0,
+      amount: undefined,
     },
   });
 
   async function onSubmit(values: z.infer<typeof depositSchema>) {
-    if (!userData) return;
+    if (!userData) {
+        toast({
+            variant: "destructive",
+            title: "Deposit Failed",
+            description: "Your user data could not be loaded. Please try again later.",
+        });
+        return;
+    }
     setIsDepositing(true);
 
     const userRef = doc(db, "users", userData.username);
 
     try {
-      await runTransaction(db, async (transaction) => {
-        const userDoc = await transaction.get(userRef);
-        if (!userDoc.exists()) {
-          throw "Document does not exist!";
-        }
+      const userDoc = await getDoc(userRef);
+      if (!userDoc.exists()) {
+        throw "Document does not exist!";
+      }
 
-        const newTotalDeposit = (userDoc.data().totalDeposit || 0) + values.amount;
-        const newTier = getTierFromDeposit(newTotalDeposit);
+      const newTotalDeposit = (userDoc.data().totalDeposit || 0) + values.amount;
+      const newTier = getTierFromDeposit(newTotalDeposit);
 
-        transaction.update(userRef, {
-          totalDeposit: increment(values.amount),
-          membershipTier: newTier,
-        });
-        
-        const referrerId = userDoc.data().referredBy;
-        if (referrerId) {
-            const referrerRef = doc(db, "users", referrerId);
-            const referrerDoc = await transaction.get(referrerRef);
-            if (referrerDoc.exists()) {
-                const referralBonus = values.amount * 0.05;
-                transaction.update(referrerRef, { earningsBalance: increment(referralBonus) });
-                
-                const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, userData.username );
-                transaction.set(referralSubcollectionRef, { deposit: values.amount }, { merge: true });
-            }
-        }
+      await updateDoc(userRef, {
+        totalDeposit: increment(values.amount),
+        membershipTier: newTier,
       });
+      
+      const referrerId = userDoc.data().referredBy;
+      if (referrerId) {
+          const referrerRef = doc(db, "users", referrerId);
+          const referrerDoc = await getDoc(referrerRef);
+          if (referrerDoc.exists()) {
+              const referralBonus = values.amount * 0.05;
+              await updateDoc(referrerRef, { earningsBalance: increment(referralBonus) });
+              
+              const referralSubcollectionRef = doc(db, `users/${referrerId}/referrals`, userData.username );
+              await setDoc(referralSubcollectionRef, { deposit: values.amount }, { merge: true });
+          }
+      }
 
       toast({
         title: "Deposit Successful",
@@ -140,7 +141,7 @@ export const DepositCard = ({ onDeposit }: { onDeposit: () => void }) => {
               <DialogClose asChild>
                 <Button type="button" variant="secondary" disabled={isDepositing}>Cancel</Button>
               </DialogClose>
-              <Button type="submit" disabled={isDepositing}>
+              <Button type="submit" variant="default" disabled={isDepositing || !userData}>
                 {isDepositing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Processing...</> : "Confirm Deposit"}
               </Button>
             </DialogFooter>

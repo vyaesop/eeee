@@ -25,9 +25,9 @@ export const SupportChat = () => {
   const [newMessage, setNewMessage] = useState('');
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const messagesCol = user?.displayName ? collection(db, 'supportChats', user.displayName, 'messages') : null;
-  const chatDocRef = user?.displayName ? doc(db, 'supportChats', user.displayName) : null;
-  const userDocRef = user?.displayName ? doc(db, 'users', user.displayName) : null;
+  const messagesCol = user?.uid ? collection(db, 'supportChats', user.uid, 'messages') : null;
+  const chatDocRef = user?.uid ? doc(db, 'supportChats', user.uid) : null;
+  const userDocRef = user?.uid ? doc(db, 'users', user.uid) : null;
 
   useEffect(() => {
     if (!messagesCol) return;
@@ -56,7 +56,7 @@ export const SupportChat = () => {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !user || !user.displayName || !messagesCol || !chatDocRef || !userDocRef) return;
+    if (!newMessage.trim() || !user || !user.uid || !messagesCol || !chatDocRef || !userDocRef) return;
 
     const chatDocSnap = await getDoc(chatDocRef);
     const updateData = {
@@ -142,9 +142,9 @@ export const SupportChat = () => {
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
           placeholder="Type your message..."
-          disabled={!user?.displayName}
+          disabled={!user?.uid}
         />
-        <Button type="submit" disabled={!user?.displayName}>Send</Button>
+        <Button type="submit" disabled={!user?.uid}>Send</Button>
       </form>
     </div>
   );

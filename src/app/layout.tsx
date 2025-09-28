@@ -20,9 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      <body className="flex flex-col min-h-screen">
         <AuthProvider>
-          {children}
+          <main className="flex-grow">{children}</main>
+          <footer className="py-4 text-center text-sm text-muted-foreground">
+            © {new Date().getFullYear()} Ethiopian Investment Group. All rights reserved.
+          </footer>
           <Toaster />
           <FirebaseErrorListener />
         </AuthProvider>

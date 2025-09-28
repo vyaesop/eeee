@@ -20,10 +20,7 @@ import { errorEmitter } from '@/lib/error-emitter';
 import { FirestorePermissionError } from '@/lib/errors';
 
 const depositSchema = z.object({
-  amount: z.preprocess(
-    (a) => parseFloat(z.string().parse(a)),
-    z.number().positive("Amount must be positive")
-  ),
+  amount: z.coerce.number().min(1, { message: "Amount must be at least Br 1."}),
 });
 
 interface InvestmentPackageCardProps {

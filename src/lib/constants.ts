@@ -3,7 +3,7 @@ export const tiers = [
   {
     name: "Observer",
     minDeposit: 0,
-    maxDeposit: 0,
+    maxDeposit: 799,
     dailyReturn: 0,
     color: "#9ca3af",
     apy: 0,
@@ -11,73 +11,73 @@ export const tiers = [
   {
     name: "Gold assets 1",
     minDeposit: 800,
-    maxDeposit: 800,
+    maxDeposit: 1199,
     dailyReturn: 0.015,
-    color: "#fde047",
+    color: "#FFD700",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Oil assets 1",
     minDeposit: 1200,
-    maxDeposit: 1200,
+    maxDeposit: 1499,
     dailyReturn: 0.015,
-    color: "#a16207",
+    color: "#FDB813",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Real estate assets 1",
     minDeposit: 1500,
-    maxDeposit: 1500,
+    maxDeposit: 2699,
     dailyReturn: 0.015,
-    color: "#f97316",
+    color: "#EAC117",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Total assets 1",
     minDeposit: 2700,
-    maxDeposit: 2700,
+    maxDeposit: 2999,
     dailyReturn: 0.015,
-    color: "#ea580c",
+    color: "#DAA520",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Gold asset 2",
     minDeposit: 3000,
-    maxDeposit: 3000,
+    maxDeposit: 3199,
     dailyReturn: 0.015,
-    color: "#facc15",
+    color: "#CD7F32",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Oil asset 2",
     minDeposit: 3200,
-    maxDeposit: 3200,
+    maxDeposit: 3999,
     dailyReturn: 0.015,
-    color: "#854d0e",
+    color: "#B87333",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Real estate asset 2",
     minDeposit: 4000,
-    maxDeposit: 4000,
+    maxDeposit: 5599,
     dailyReturn: 0.015,
-    color: "#d97706",
+    color: "#C58917",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "Total assets 2",
     minDeposit: 5600,
-    maxDeposit: 5600,
+    maxDeposit: 11999,
     dailyReturn: 0.015,
-    color: "#b45309",
+    color: "#C19A6B",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
     name: "All invest",
     minDeposit: 12000,
-    maxDeposit: 12000,
+    maxDeposit: 12999,
     dailyReturn: 0.015,
-    color: "#78350f",
+    color: "#AD6F69",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
   {
@@ -85,17 +85,13 @@ export const tiers = [
     minDeposit: 13000,
     maxDeposit: Number.POSITIVE_INFINITY,
     dailyReturn: 0.015,
-    color: "#451a03",
+    color: "#966F33",
     apy: Math.pow(1 + 0.015, 365) - 1,
   },
 ];
 
 export function getTierFromDeposit(deposit: number) {
-  // Sort tiers by minDeposit in descending order to find the highest applicable tier
   const sortedTiers = [...tiers].sort((a, b) => b.minDeposit - a.minDeposit);
-
-  // Find the first tier for which the deposit is sufficient
   const applicableTier = sortedTiers.find(tier => deposit >= tier.minDeposit);
-
   return applicableTier ? applicableTier.name : "Observer";
 }
