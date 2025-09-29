@@ -22,7 +22,7 @@ import { useState, useEffect } from "react";
 import { LogIn } from "lucide-react";
 
 const formSchema = z.object({
-  username: z.string().min(3, "Username is required."),
+  username: z.string().min(10, "Phone number must be at least 10 digits.").regex(/^[0-9]+$/, "Phone number must only contain numbers."),
   password: z.string().min(1, "Password is required."),
 });
 
@@ -81,9 +81,9 @@ export default function LoginPage() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Phone number</FormLabel>
                   <FormControl>
-                    <Input placeholder="your_username" {...field} />
+                    <Input placeholder="e.g. 0911223344" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

@@ -14,7 +14,7 @@ interface AuthContextType {
     uid: string;
   } | null;
   loading: boolean;
-  signUp: (email: string, password: string, username: string, referredBy?: string) => Promise<void>;
+  signUp: (username: string, password: string, referredBy?: string) => Promise<void>;
   logIn: (username: string, password?: string) => Promise<void>;
   signOut: () => void;
 }
@@ -50,37 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
     setLoading(false);
     setIsAuthReady(true);
-  }, []);
-
-  const signUp = useCallback(async (email: string, password: string, username: string, referredBy?: string) => {
-    const userRef = doc(db, "users", username);
-    const userSnap = await getDoc(userRef);
-
-    if (userSnap.exists()) {
-      throw new Error("Username already exists.");
-    }
-    
-    const initialDeposit = 0;
-    const referralCode = generateReferralCode(6);
-    
-    const newUser = {
-      username: username,
-      email: email,
-      password, // In a real app, hash this!
-      totalDeposit: initialDeposit,
-      earningsBalance: 0,
-      autoCompounding: true,
-      joined: new Date().toISOString(),
-      referredBy: referredBy || null,
-      referralCode: referralCode,
-      membershipTier: getTierFromDeposit(initialDeposit),
-      lastEarningsUpdate: Timestamp.now(),
-      role: 'user' as 'user' | 'admin',
-    };
-
-    await setDoc(userRef, newUser);
-
-    // No auto login after sign up
   }, []);
 
   const logIn = useCallback(async (username: string, password?: string) => {
@@ -138,8 +107,41 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const userUID = userSnap.id; 
     sessionStorage.setItem('eig_user', username);
     sessionStorage.setItem('eig_uid', userUID);
-    setUser({ displayName: username, email: userData.email, uid: userUID });
+    setUser({ displayName: username, email: null, uid: userUID });
   }, []);
+
+  const signUp = useCallback(async (username: string, password: string, referredBy?: string) => {
+    if (username.length < 10 || !/^[0-9]+$/.test(username)) {
+      throw new Error("Phone number must be at least 10 digits and contain only numbers.");
+    }
+    const userRef = doc(db, "users", username);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      throw new Error("Phone number already exists.");
+    }
+    
+    const initialDeposit = 0;
+    const referralCode = generateReferralCode(6);
+    
+    const newUser = {
+      username: username,
+      password, // In a real app, hash this!
+      totalDeposit: initialDeposit,
+      earningsBalance: 0,
+      autoCompounding: true,
+      joined: new Date().toISOString(),
+      referredBy: referredBy || null,
+      referralCode: referralCode,
+      membershipTier: getTierFromDeposit(initialDeposit),
+      lastEarningsUpdate: Timestamp.now(),
+      role: 'user' as 'user' | 'admin',
+    };
+
+    await setDoc(userRef, newUser);
+
+    await logIn(username);
+  }, [logIn]);
 
   const signOut = useCallback(() => {
     sessionStorage.removeItem('eig_user');

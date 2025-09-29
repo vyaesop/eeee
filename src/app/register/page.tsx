@@ -17,14 +17,12 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/use-auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useEffect, useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { UserPlus } from "lucide-react";
 
 const formSchema = z.object({
-  username: z.string(),
-  email: z.string().email(),
+  username: z.string().min(10, "Phone number must be at least 10 digits.").regex(/^[0-9]+$/, "Phone number must only contain numbers."),
   password: z.string().min(8, "Password must be at least 8 characters"),
   confirmPassword: z.string(),
   referredBy: z.string().optional(),
@@ -39,7 +37,6 @@ export default function RegisterPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const ref = searchParams.get('ref');
@@ -60,7 +57,6 @@ export default function RegisterPage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: username || "",
-      email: "",
       password: "",
       confirmPassword: "",
       referredBy: ref || "",
@@ -70,8 +66,8 @@ export default function RegisterPage() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     try {
-      await signUp(values.email, values.password, values.username, values.referredBy);
-      setShowSuccessDialog(true);
+      await signUp(values.username, values.password, values.referredBy);
+      router.push('/dashboard');
     } catch (error: any) {
       console.error("Registration Error:", error);
       toast({
@@ -106,22 +102,9 @@ export default function RegisterPage() {
               name="username"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Phone number</FormLabel>
                   <FormControl>
                     <Input {...field} readOnly className="bg-muted"/>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl>
-                    <Input placeholder="your@email.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -178,21 +161,6 @@ export default function RegisterPage() {
           </Link>
         </p>
       </div>
-      <AlertDialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Registration Successful!</AlertDialogTitle>
-            <AlertDialogDescription>
-              Welcome to Ethiopian Investment Group! You can now log in.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction asChild>
-              <Link href="/login">Go to Login</Link>
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

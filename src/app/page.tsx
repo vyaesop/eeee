@@ -26,7 +26,7 @@ import Link from "next/link";
 import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters."),
+  username: z.string().min(3, "Phone number must be at least 10 characters."),
   invitationCode: z.string().min(1, "Invitation code is required."),
 });
 
@@ -99,8 +99,8 @@ export default function JoinPage() {
 
         if (userSnap.exists()) {
             toast({
-                title: "Username Exists",
-                description: "This username is taken. Trying to log in instead.",
+                title: "Phone number Exists",
+                description: "This Phone number is taken. Trying to log in instead.",
             });
             // Try to log in if user exists
             router.push(`/login?username=${values.username}`);
@@ -175,9 +175,9 @@ export default function JoinPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>Phone number</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Abebe" {...field} />
+                      <Input placeholder="e.g. 0911223344" type="tel" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -136,7 +136,7 @@ export default function AdminPage() {
                 <Table>
                     <TableHeader>
                     <TableRow>
-                        <TableHead>Username</TableHead>
+                        <TableHead>Phone number</TableHead>
                         <TableHead>Total Deposit</TableHead>
                         <TableHead>Membership Tier</TableHead>
                         <TableHead>Role</TableHead>

@@ -49,11 +49,15 @@ export const WithdrawCard = ({ onWithdraw, totalBalance }: WithdrawCardProps) =>
     },
   });
 
+  const withdrawalFee = 0.08;
+
   async function onSubmit(values: z.infer<typeof withdrawSchema>) {
     if (!user || !user.displayName) return;
     setIsWithdrawing(true);
 
     const userRef = doc(db, "users", user.displayName);
+    const feeAmount = values.amount * withdrawalFee;
+    const totalDeduction = values.amount + feeAmount;
 
     try {
       await runTransaction(db, async (transaction) => {
@@ -66,19 +70,18 @@ export const WithdrawCard = ({ onWithdraw, totalBalance }: WithdrawCardProps) =>
         const currentEarnings = data.earningsBalance || 0;
         const currentPrincipal = data.totalDeposit || 0;
         const availableBalance = currentPrincipal + currentEarnings;
-        const withdrawAmount = values.amount;
 
-        if (withdrawAmount > availableBalance) {
-          throw new Error("Insufficient funds for this withdrawal.");
+        if (totalDeduction > availableBalance) {
+          throw new Error("Insufficient funds for this withdrawal, including the 8% fee.");
         }
 
         let newEarnings = currentEarnings;
         let newPrincipal = currentPrincipal;
 
-        if (withdrawAmount <= currentEarnings) {
-          newEarnings -= withdrawAmount;
+        if (totalDeduction <= currentEarnings) {
+          newEarnings -= totalDeduction;
         } else {
-          const fromPrincipal = withdrawAmount - currentEarnings;
+          const fromPrincipal = totalDeduction - currentEarnings;
           newEarnings = 0;
           newPrincipal -= fromPrincipal;
         }
@@ -94,7 +97,7 @@ export const WithdrawCard = ({ onWithdraw, totalBalance }: WithdrawCardProps) =>
 
       toast({
         title: "Withdrawal Successful",
-        description: `${formatCurrency(values.amount)} has been withdrawn from your account.`,
+        description: `${formatCurrency(values.amount)} has been withdrawn, with a fee of ${formatCurrency(feeAmount)}. Total deduction: ${formatCurrency(totalDeduction)}`,
       });
       if(onWithdraw) onWithdraw();
       form.reset();
@@ -136,7 +139,7 @@ export const WithdrawCard = ({ onWithdraw, totalBalance }: WithdrawCardProps) =>
         <DialogHeader>
           <DialogTitle>Make a Withdrawal</DialogTitle>
           <DialogDescription>
-            Your total available balance is {formatCurrency(totalBalance)}. Enter the amount you wish to withdraw.
+            Your total available balance is {formatCurrency(totalBalance)}. A withdrawal fee of 8% will be applied.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
