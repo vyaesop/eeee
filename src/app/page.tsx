@@ -190,7 +190,7 @@ export default function JoinPage() {
                   <FormItem>
                     <FormLabel>Invitation Code</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your exclusive code" type="password" {...field} />
+                      <Input placeholder="Enter your exclusive code" type="text" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

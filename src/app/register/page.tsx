@@ -42,17 +42,6 @@ export default function RegisterPage() {
   const ref = searchParams.get('ref');
   const username = searchParams.get('username');
 
-  useEffect(() => {
-    if (!username) {
-        toast({
-            variant: "destructive",
-            title: "Registration Error",
-            description: "No username provided. Please start from the beginning.",
-        });
-        router.push('/');
-    }
-  }, [username, router, toast]);
-
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -62,6 +51,24 @@ export default function RegisterPage() {
       referredBy: ref || "",
     },
   });
+
+  useEffect(() => {
+    if (!username) {
+        toast({
+            variant: "destructive",
+            title: "Registration Error",
+            description: "No username provided. Please start from the beginning.",
+        });
+        router.push('/');
+    } else {
+      form.setValue('username', username);
+    }
+
+    if (ref) {
+      form.setValue('referredBy', ref);
+    }
+  }, [username, ref, router, toast, form]);
+
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -154,7 +161,7 @@ export default function RegisterPage() {
             </Button>
           </form>
         </Form>
-        <p className="text-center text-sm text-muted-foreground">
+        <p className="text-center text-sm text-muted-foreground mt-4">
           Already have an account?{" "}
           <Link href="/login" className="underline hover:text-primary">
             Login
