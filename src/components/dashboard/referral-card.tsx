@@ -56,7 +56,7 @@ export const ReferralProgramCard = ({ userData }: ReferralCardProps) => {
     <Card className="shadow-lg">
       <CardHeader>
         <CardTitle>Referral Program</CardTitle>
-        <CardDescription>Earn a 8% bonus on the first deposit of users you refer.</CardDescription>
+        <CardDescription>Earn a 8% bonus on the deposit of users you refer.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="mb-4">
